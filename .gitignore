@@ -1,0 +1,19 @@
+# Build
+obj/
+ft_ping
+
+# Clangd cache
+.cache/
+
+# Compilation database
+compile_commands.json
+
+# OS files
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
