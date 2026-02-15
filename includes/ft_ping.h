@@ -66,6 +66,7 @@ typedef struct icmphdr	t_icmphdr;
 # define PING_DEFAULT_INTERVAL	1000000
 # define PING_FLOOD_INTERVAL	10000
 # define MAXPATTERN				16
+# define PING_CKTAB_SZ			128
 
 # define OPT_VERBOSE		(1 << 0)
 # define OPT_FLOOD			(1 << 1)
@@ -103,6 +104,8 @@ typedef struct s_ping
 
 	size_t				num_xmit;
 	size_t				num_recv;
+	size_t				num_rept;
+	unsigned char		recv_table[PING_CKTAB_SZ];
 
 	uint16_t			ident;
 	uint16_t			seq;
@@ -153,7 +156,7 @@ void		print_statistics(t_ping *ping);
 void		print_echo_reply(t_ping *ping, struct msghdr *msg,
 				uint8_t *buf, ssize_t bytes_recv);
 void		print_icmp_error(struct sockaddr_in *from, struct ip *ip_hdr,
-				t_icmphdr *icmp_hdr, int datalen, unsigned int options);
+				t_icmphdr *icmp_hdr, int datalen, t_ping *ping);
 
 void		setup_signals(void);
 

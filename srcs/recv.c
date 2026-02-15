@@ -40,7 +40,7 @@ int	recv_ping(t_ping *ping)
 	if (ICMP_HDR_TYPE(icmp_hdr) != ICMP_ECHO)
 	{
 		print_icmp_error(&from, ip_hdr, icmp_hdr,
-			(int)bytes, ping->options);
+			(int)bytes, ping);
 	}
 	return (0);
 }

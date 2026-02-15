@@ -209,7 +209,8 @@ static void	ping_loop(t_ping *ping)
 		if (ret > 0 && FD_ISSET(ping->sockfd, &readfds))
 		{
 			recv_ping(ping);
-			if (ping->count && ping->num_recv >= ping->count)
+			if (ping->count
+				&& (ping->num_recv - ping->num_rept) >= ping->count)
 				break ;
 		}
 		gettimeofday(&now, NULL);

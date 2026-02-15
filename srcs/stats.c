@@ -17,6 +17,8 @@ void	print_statistics(t_ping *ping)
 	printf("--- %s ping statistics ---\n", ping->hostname);
 	printf("%zu packets transmitted, ", ping->num_xmit);
 	printf("%zu packets received, ", ping->num_recv);
+	if (ping->num_rept)
+		printf("+%zu duplicates, ", ping->num_rept);
 	if (ping->num_xmit)
 	{
 		if (ping->num_recv > ping->num_xmit)

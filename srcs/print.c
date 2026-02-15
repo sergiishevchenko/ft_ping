@@ -28,6 +28,19 @@ static void	update_timing(t_ping *ping, uint8_t *buf, int ip_hdr_len,
 	}
 }
 
+static int	check_duplicate(t_ping *ping, uint16_t seq)
+{
+	int	idx;
+	int	bit;
+
+	idx = (seq % (PING_CKTAB_SZ * 8)) >> 3;
+	bit = 1 << ((seq % (PING_CKTAB_SZ * 8)) & 0x07);
+	if (ping->recv_table[idx] & bit)
+		return (1);
+	ping->recv_table[idx] |= bit;
+	return (0);
+}
+
 void	print_echo_reply(t_ping *ping, struct msghdr *msg,
 			uint8_t *buf, ssize_t bytes_recv)
 {
@@ -37,13 +50,17 @@ void	print_echo_reply(t_ping *ping, struct msghdr *msg,
 	int				datalen;
 	double			triptime;
 	bool			timing;
+	int				dupflag;
 
 	ip_hdr = (struct ip *)buf;
 	ip_hdr_len = ip_hdr->ip_hl << 2;
 	icmp_hdr = (t_icmphdr *)(buf + ip_hdr_len);
 	datalen = (int)bytes_recv - ip_hdr_len;
 	update_timing(ping, buf, ip_hdr_len, datalen, &triptime, &timing);
+	dupflag = check_duplicate(ping, ntohs(ICMP_HDR_SEQ(icmp_hdr)));
 	ping->num_recv++;
+	if (dupflag)
+		ping->num_rept++;
 	if (ping->options & OPT_FLOOD)
 	{
 		putchar('\b');
@@ -56,6 +73,8 @@ void	print_echo_reply(t_ping *ping, struct msghdr *msg,
 	printf(" ttl=%d", ip_hdr->ip_ttl);
 	if (timing)
 		printf(" time=%.3f ms", triptime);
+	if (dupflag)
+		printf(" (DUP!)");
 	print_ip_opt(ip_hdr, ip_hdr_len);
 	printf("\n");
 }
@@ -196,14 +215,19 @@ static const char	*get_icmp_error_str(int type, int code)
 }
 
 void	print_icmp_error(struct sockaddr_in *from, struct ip *ip_hdr,
-			t_icmphdr *icmp_hdr, int datalen, unsigned int options)
+		t_icmphdr *icmp_hdr, int datalen, t_ping *ping)
 {
 	int			hlen;
 	const char	*err_str;
+	struct ip	*inner_ip;
 
-	if (!(options & OPT_VERBOSE))
-		return ;
 	hlen = ip_hdr->ip_hl << 2;
+	if (datalen - hlen < PING_PKT_HDR_SZ + (int)sizeof(struct ip))
+		return ;
+	inner_ip = (struct ip *)((uint8_t *)icmp_hdr + PING_PKT_HDR_SZ);
+	if (!(ping->options & OPT_VERBOSE)
+		&& inner_ip->ip_dst.s_addr != ping->dest_addr.sin_addr.s_addr)
+		return ;
 	printf("%d bytes from %s: ", datalen - hlen,
 		inet_ntoa(from->sin_addr));
 	err_str = get_icmp_error_str(ICMP_HDR_TYPE(icmp_hdr),
@@ -212,7 +236,8 @@ void	print_icmp_error(struct sockaddr_in *from, struct ip *ip_hdr,
 		printf("%s\n", err_str);
 	else
 		printf("Bad ICMP type: %d\n", ICMP_HDR_TYPE(icmp_hdr));
-	print_inner_ip_data(icmp_hdr);
+	if (ping->options & OPT_VERBOSE)
+		print_inner_ip_data(icmp_hdr);
 }
 
 static void	print_ts_entry(unsigned char *cp, int flag, int j)
