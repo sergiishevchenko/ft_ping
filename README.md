@@ -2,6 +2,42 @@
 
 A from-scratch implementation of the `ping` command in C, using raw ICMP sockets. Follows the output format of **inetutils-2.0** (`ping -V`).
 
+## VM setup (Debian)
+
+The subject requires running in a **Debian VM (>= 7.0)** with a Linux kernel **> 3.14**.
+
+### 1) System checks
+
+```bash
+cat /etc/debian_version
+uname -r
+```
+
+### 2) Packages
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential make gcc
+```
+
+### 3) Networking
+
+You need working IPv4 connectivity and DNS:
+
+```bash
+ip addr
+ip route
+cat /etc/resolv.conf
+```
+
+### 4) Privileges
+
+`ft_ping` uses a raw ICMP socket, so it must be run as **root**:
+
+```bash
+sudo ./ft_ping <destination>
+```
+
 ## Build
 
 ```bash
@@ -96,3 +132,7 @@ ft_ping/
 ## Platform support
 
 Works on both **macOS** and **Linux** (Debian 7+, kernel > 3.14). Platform differences in ICMP structures are handled via a compatibility layer in `ft_ping.h`.
+
+## Testing
+
+See `docs/TESTING.md` for a step-by-step checklist of what to test (mandatory + bonus flags + negative cases).
