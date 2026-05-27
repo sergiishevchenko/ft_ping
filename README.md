@@ -136,3 +136,7 @@ Works on both **macOS** and **Linux** (Debian 7+, kernel > 3.14). Platform diffe
 ## Testing
 
 See `docs/TESTING.md` for a step-by-step checklist of what to test (mandatory + bonus flags + negative cases).
+
+## Internals
+
+See `docs/ARCHITECTURE.md` for a detailed description of the program flow and implementation details.
