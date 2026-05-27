@@ -4,6 +4,13 @@ CC			= gcc
 CFLAGS		= -Wall -Wextra -Werror
 LDFLAGS		= -lm
 
+COLOR_RESET	= \033[0m
+COLOR_BOLD	= \033[1m
+COLOR_RED	= \033[31m
+COLOR_GREEN	= \033[32m
+COLOR_YELLOW	= \033[33m
+COLOR_BLUE	= \033[34m
+
 SRC_DIR		= srcs
 INC_DIR		= includes
 OBJ_DIR		= obj
@@ -25,21 +32,26 @@ DEPS		= $(OBJS:.o=.d)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(OBJS) -o $(NAME) $(LDFLAGS)
+	@printf "$(COLOR_BOLD)$(COLOR_BLUE)LD$(COLOR_RESET)  %s\n" "$(NAME)"
+	@$(CC) $(CFLAGS) $(OBJS) -o $(NAME) $(LDFLAGS)
+	@printf "$(COLOR_BOLD)$(COLOR_GREEN)OK$(COLOR_RESET)  %s\n" "$(NAME)"
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
-	$(CC) $(CFLAGS) -MMD -MP -I$(INC_DIR) -c $< -o $@
+	@printf "$(COLOR_BOLD)$(COLOR_YELLOW)CC$(COLOR_RESET)  %s\n" "$<"
+	@$(CC) $(CFLAGS) -MMD -MP -I$(INC_DIR) -c $< -o $@
 
 $(OBJ_DIR):
-	mkdir -p $(OBJ_DIR)
+	@mkdir -p $(OBJ_DIR)
 
 -include $(DEPS)
 
 clean:
-	rm -rf $(OBJ_DIR)
+	@printf "$(COLOR_BOLD)$(COLOR_RED)CLEAN$(COLOR_RESET) %s\n" "$(OBJ_DIR)"
+	@rm -rf $(OBJ_DIR)
 
 fclean: clean
-	rm -f $(NAME)
+	@printf "$(COLOR_BOLD)$(COLOR_RED)FCLEAN$(COLOR_RESET) %s\n" "$(NAME)"
+	@rm -f $(NAME)
 
 re: fclean all
 
