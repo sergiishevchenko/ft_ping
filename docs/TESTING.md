@@ -275,5 +275,5 @@ Expected:
 
 ## Platform notes (Linux/macOS)
 
-- On **Linux (Debian VM)** the project must run as required by the subject.
+- On **Linux (Debian VM)** the project should be tested in the evaluation environment.
 - On **macOS** raw sockets also require root. Behavior of some IP options (especially timestamps) can differ due to OS/network restrictions.

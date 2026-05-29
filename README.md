@@ -4,38 +4,16 @@ A from-scratch implementation of the `ping` command in C, using raw ICMP sockets
 
 ## VM setup (Debian)
 
-The subject requires running in a **Debian VM (>= 7.0)** with a Linux kernel **> 3.14**.
+This project is expected to be run and defended on a **Debian VM (>= 7.0)** with Linux kernel **> 3.14**.
 
-### 1) System checks
+See **`docs/VM_SETUP.md`** for a full guide: creating the VM, packages, networking, SSH from a 42 cluster machine, build/run, and defense checklist.
 
-```bash
-cat /etc/debian_version
-uname -r
-```
-
-### 2) Packages
+Quick start on the VM:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y build-essential make gcc
-```
-
-### 3) Networking
-
-You need working IPv4 connectivity and DNS:
-
-```bash
-ip addr
-ip route
-cat /etc/resolv.conf
-```
-
-### 4) Privileges
-
-`ft_ping` uses a raw ICMP socket, so it must be run as **root**:
-
-```bash
-sudo ./ft_ping <destination>
+sudo apt-get update && sudo apt-get install -y build-essential make gcc git
+cd ft_ping && make re
+sudo ./ft_ping -c 3 127.0.0.1
 ```
 
 ## Build
@@ -133,10 +111,10 @@ ft_ping/
 
 Works on both **macOS** and **Linux** (Debian 7+, kernel > 3.14). Platform differences in ICMP structures are handled via a compatibility layer in `ft_ping.h`.
 
-## Testing
+## Documentation
 
-See `docs/TESTING.md` for a step-by-step checklist of what to test (mandatory + bonus flags + negative cases).
-
-## Internals
-
-See `docs/ARCHITECTURE.md` for a detailed description of the program flow and implementation details.
+| Document | Description |
+|----------|-------------|
+| `docs/VM_SETUP.md` | Debian VM setup, cluster SSH, defense preparation |
+| `docs/TESTING.md` | Manual test checklist (mandatory + bonus) |
+| `docs/ARCHITECTURE.md` | Program flow and implementation details |

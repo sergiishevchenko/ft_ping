@@ -50,7 +50,7 @@ Key behavior:
 - stores the numeric string in `ping->ip_str` (`inet_ntop`)
 - stores the original argument in `ping->hostname` (used in the header)
 
-The subject requires: **FQDN without reverse DNS in the packet return**.
+The project requirements include: **FQDN without reverse DNS in the packet return**.
 So reply lines always display numeric addresses for packet sources.
 
 ### 3) Privileges and socket creation
