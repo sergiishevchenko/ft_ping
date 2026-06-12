@@ -111,10 +111,15 @@ ft_ping/
 
 Works on both **macOS** and **Linux** (Debian 7+, kernel > 3.14). Platform differences in ICMP structures are handled via a compatibility layer in `ft_ping.h`.
 
-## Documentation
+## Testing
 
-| Document | Description |
-|----------|-------------|
-| `docs/VM_SETUP.md` | Debian VM setup, cluster SSH, defense preparation |
-| `docs/TESTING.md` | Manual test checklist (mandatory + bonus) |
-| `docs/ARCHITECTURE.md` | Program flow and implementation details |
+See **`docs/TESTING.md`** for the full checklist (mandatory, output format, bonus, negative tests).
+
+To compare `ft_ping` with system `ping`, open two terminals and run the paired commands from the table at the top of `docs/TESTING.md`. Each row has `ft_ping`, the matching `ping` command (inetutils on Debian), and the expected result. On the VM, check `ping -V` — that is the reference binary.
+
+```bash
+sudo ./ft_ping -c 3 127.0.0.1    # terminal 1
+ping -c 3 127.0.0.1              # terminal 2
+```
+
+On macOS, `/sbin/ping` is BSD ping: use `-t` for TTL instead of `--ttl`; some inetutils flags (`-w`, `-n`, `-T`, `--ip-timestamp`) are not available.

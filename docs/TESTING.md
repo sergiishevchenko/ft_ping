@@ -25,8 +25,6 @@ make re
 
 Open two terminals and run the same row from the table below. The `ft_ping` column matches **Mandatory tests**, **Output format checks**, and **Bonus flags tests**; `ping` is the inetutils equivalent (`ping -V` on Debian VM). On macOS use `-t` instead of `--ttl` (already shown in the table).
 
-**Copy buttons:** Markdown does not support interactive buttons. Open [testing_compare.html](testing_compare.html) in a browser — same table with **Copy** next to each command.
-
 RTT values will differ; compare line **format**, not exact milliseconds.
 
 | Test | `ft_ping` | `ping` | Expected |
