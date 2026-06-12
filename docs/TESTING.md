@@ -21,6 +21,49 @@ make re
   - `8.8.8.8` / `1.1.1.1` (public IPs, if allowed)
   - Your router / LAN host (low latency)
 
+## Comparing with system `ping`
+
+Open two terminals and run the same row from the table below. `ft_ping` follows **inetutils-2.0** — on the Debian evaluation VM use `ping` from inetutils (`ping -V`). On macOS, `/sbin/ping` is BSD ping: output differs; some `ping` commands in the table have a macOS variant in the notes column.
+
+RTT values will differ; compare line **format**, not exact milliseconds.
+
+| Test | `ft_ping` | `ping` |
+|------|-----------|--------|
+| Basic (Ctrl+C to stop) | `sudo ./ft_ping 127.0.0.1` | `ping 127.0.0.1` |
+| Hostname | `sudo ./ft_ping -c 3 google.com` | `ping -c 3 google.com` |
+| Verbose | `sudo ./ft_ping -v -c 2 127.0.0.1` | `ping -v -c 2 127.0.0.1` |
+| Statistics | `sudo ./ft_ping -c 3 127.0.0.1` | `ping -c 3 127.0.0.1` |
+| Count | `sudo ./ft_ping -c 1 127.0.0.1` | `ping -c 1 127.0.0.1` |
+| TTL exceeded | `sudo ./ft_ping --ttl 1 -c 3 8.8.8.8` | `ping -t 1 -c 3 8.8.8.8` |
+| TTL exceeded (verbose) | `sudo ./ft_ping -v --ttl 1 -c 3 8.8.8.8` | `ping -v -t 1 -c 3 8.8.8.8` |
+| Payload size 0 | `sudo ./ft_ping -s 0 -c 1 127.0.0.1` | `ping -s 0 -c 1 127.0.0.1` |
+| Payload size 56 | `sudo ./ft_ping -s 56 -c 1 127.0.0.1` | `ping -s 56 -c 1 127.0.0.1` |
+| Payload size 1000 | `sudo ./ft_ping -s 1000 -c 1 127.0.0.1` | `ping -s 1000 -c 1 127.0.0.1` |
+| Global timeout | `sudo ./ft_ping -w 2 8.8.8.8` | `ping -w 2 8.8.8.8` |
+| Linger | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` | `ping -c 2 -W 3 8.8.8.8` |
+| TTL 64 | `sudo ./ft_ping --ttl 64 -c 1 8.8.8.8` | `ping -t 64 -c 1 8.8.8.8` |
+| TOS | `sudo ./ft_ping -T 16 -c 1 127.0.0.1` | `ping -T 16 -c 1 127.0.0.1` |
+| Numeric | `sudo ./ft_ping -n -c 2 google.com` | `ping -n -c 2 google.com` |
+| Pattern | `sudo ./ft_ping -p ff -s 56 -c 1 127.0.0.1` | `ping -p ff -s 56 -c 1 127.0.0.1` |
+| Preload | `sudo ./ft_ping -l 10 -c 10 127.0.0.1` | `ping -l 10 -c 10 127.0.0.1` |
+| Bypass routing | `sudo ./ft_ping -r -c 1 127.0.0.1` | `ping -r -c 1 127.0.0.1` |
+| Flood | `sudo ./ft_ping -f -c 100 127.0.0.1` | `sudo ping -f -c 100 127.0.0.1` |
+| IP timestamp tsonly | `sudo ./ft_ping --ip-timestamp tsonly -c 1 8.8.8.8` | `ping --ip-timestamp tsonly -c 1 8.8.8.8` |
+| IP timestamp tsaddr | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `ping --ip-timestamp tsaddr -c 1 8.8.8.8` |
+| Save output (diff) | `sudo ./ft_ping -c 3 127.0.0.1 > /tmp/ft_ping.out 2>&1` | `sudo ping -c 3 127.0.0.1 > /tmp/sys_ping.out 2>&1` |
+
+macOS overrides (only where `ping` differs):
+
+| Test | `ping` (macOS) |
+|------|----------------|
+| Linger | `ping -c 2 -W 3000 8.8.8.8` |
+| Global timeout | no `-w`; use `-c` instead |
+| Numeric | no `-n` flag |
+| IP timestamp | not supported |
+| TOS | not supported |
+
+On Linux (Debian VM), prefix `ping` with `sudo` if needed. After the diff row: `diff -u /tmp/sys_ping.out /tmp/ft_ping.out` — ignore `id`, RTT, and process-specific fields.
+
 ## Mandatory tests (must be perfect)
 
 ### 1) Help without root
