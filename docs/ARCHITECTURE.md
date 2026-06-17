@@ -4,8 +4,6 @@
 
 Below is a plain-language overview of how the program works. The rest of this document covers protocols, data structures, modules, and flags in detail.
 
-Russian version of the overview: [`docs/ru/ARCHITECTURE.md`](ru/ARCHITECTURE.md#как-это-работает).
-
 ---
 
 ## Overview
@@ -107,7 +105,6 @@ ft_ping/
 │   └── utils.c        # parse_number, decode_pattern, calc_stddev
 ├── Makefile
 └── docs/
-    └── ru/            # Russian documentation
 ```
 
 Dependencies between `.c` files are flat: every file includes only `ft_ping.h`. Modules communicate through the shared `t_ping` object and the global `g_stop` flag.
@@ -671,15 +668,3 @@ make        # build
 make re     # fclean + all
 sudo ./ft_ping -c 3 127.0.0.1
 ```
-
----
-
-## Related docs
-
-| Document | Content |
-|----------|---------|
-| `docs/FLAGS.md` | Command-line flags (mandatory + bonus) |
-| `docs/TESTING.md` | Manual test checklist (mandatory + bonus) |
-| `docs/VM_SETUP.md` | Debian VM, SSH from 42 cluster |
-| `docs/ru/ARCHITECTURE.md` | This document in Russian |
-| `README.md` | Options and usage examples |

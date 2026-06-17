@@ -221,50 +221,6 @@ Compare:
 
 A **±30 ms** tolerance on receive timing is typically accepted; line **indentation** should match inetutils-2.0 (except RTT values and no reverse DNS on replies).
 
----
 
-## 9. Defense preparation checklist
-
-Before evaluation, on the **VM**:
-
-- [ ] `make re` succeeds with no warnings (`-Wall -Wextra -Werror`)
-- [ ] `./ft_ping -?` works without root
-- [ ] `sudo ./ft_ping 127.0.0.1` works
-- [ ] `sudo ./ft_ping google.com` resolves and pings (FQDN in header, IP in replies)
-- [ ] `sudo ./ft_ping -v --ttl 1 -c 2 8.8.8.8` shows ICMP errors without crashing
-- [ ] You can explain: raw socket, checksum, main loop, `-v` vs error display (see `docs/ARCHITECTURE.md`)
-- [ ] Bonus flags you implemented are tested (`docs/TESTING.md`)
-- [ ] Repo is pushed; defense is done from the VM copy that matches Git
-
-During defense, evaluators may:
-
-- Build with your `Makefile`
-- Run mandatory and bonus options
-- Force errors (e.g. low TTL) and check the program does not segfault
-- Compare output formatting with reference ping
 
 ---
-
-## 10. Troubleshooting
-
-| Problem | What to try |
-|---------|-------------|
-| `Operation not permitted` | Run with `sudo ./ft_ping`, not plain `./ft_ping` |
-| `unknown host` | Fix DNS (`ping google.com`), check `/etc/resolv.conf` |
-| No replies, 100% loss | Test `ping 8.8.8.8`; firewall on host/network may block ICMP |
-| `make: command not found` | `sudo apt-get install build-essential` |
-| Works on Mac, fails on VM | Rebuild on VM (`make re`); test only on Linux for grading |
-| Cannot SSH from cluster | Bridged IP, firewall (`sudo ufw allow ssh`), or SSH port forward |
-
----
-
-## Related docs
-
-| Document | Content |
-|----------|---------|
-| `docs/FLAGS.md` | Command-line flags (mandatory + bonus) |
-| `docs/ru/FLAGS.md` | Флаги командной строки |
-| `docs/ru/ARCHITECTURE.md` | Архитектура (RU) |
-| `docs/TESTING.md` | Manual test commands (mandatory + bonus) |
-| `docs/ARCHITECTURE.md` | How the code is structured and runs |
-| `README.md` | Build, options, short VM summary |

@@ -261,14 +261,3 @@ Invalid unknown options print `invalid option` and exit non-zero.
 | At least one reply received | `0` |
 | No replies received | non-zero (`1`) |
 | Parse / socket / pattern errors | non-zero |
-
----
-
-## Related docs
-
-| File | Content |
-|------|---------|
-| `docs/TESTING.md` | Paired `ft_ping` / `ping` commands and expected output |
-| `docs/ARCHITECTURE.md` | How flags connect to the main loop and socket options |
-| `docs/ru/FLAGS.md` | Russian flag reference |
-| `README.md` | Quick build and usage |

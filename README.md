@@ -35,7 +35,7 @@ sudo ./ft_ping [options] <destination>
 
 Root privileges are required (raw sockets).
 
-Full reference: **`docs/FLAGS.md`** · **`docs/ru/FLAGS.md`** — mandatory vs bonus, defaults, inetutils mapping, examples.
+Full reference: **`docs/FLAGS.md`** — mandatory vs bonus, defaults, inetutils mapping, examples.
 
 ### Options (summary)
 
@@ -82,7 +82,7 @@ round-trip min/avg/max/stddev = 1.234/1.345/1.456/0.111 ms
 
 ## How it works
 
-Plain-language overview (startup, main loop, send/receive, shutdown): **`docs/ARCHITECTURE.md`** · **`docs/ru/ARCHITECTURE.md`** (section «Как это работает»).
+How the program works (flow, functions, module interaction): **`docs/ARCHITECTURE.md`**.
 
 ## Project structure
 
@@ -120,17 +120,3 @@ ping -c 3 127.0.0.1              # terminal 2
 ```
 
 On macOS, `/sbin/ping` is BSD ping: use `-t` for TTL instead of `--ttl`; some inetutils flags (`-w`, `-n`, `-T`, `--ip-timestamp`) are not available.
-
-## Documentation
-
-| Document | Description |
-|----------|-------------|
-| `docs/FLAGS.md` | Command-line flags — mandatory + bonus |
-| `docs/ru/README.md` | Оглавление русской документации |
-| `docs/ru/FLAGS.md` | Флаги командной строки |
-| `docs/TESTING.md` | Test checklist + `ft_ping` vs `ping` table |
-| `docs/VM_SETUP.md` | Debian VM setup and defense prep |
-| `docs/ARCHITECTURE.md` | How the program works (plain overview) + protocol and modules |
-| `docs/ru/ARCHITECTURE.md` | Архитектура и реализация |
-| `docs/ru/HEADER.md` | Walkthrough of `ft_ping.h` (Russian) |
-| `docs/ru/code/README.md` | Walkthrough of all `.c` files (Russian) |
