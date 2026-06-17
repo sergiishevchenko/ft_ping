@@ -1,35 +1,75 @@
 # `ft_ping` architecture (detailed)
 
-This document explains **how the project is structured**, **the protocols and data structures involved**, **runtime behavior**, and **how modules interact**.
+`ft_ping` is a from-scratch implementation of the `ping` command in C. It checks whether a host is reachable and measures round-trip time. Output format matches **inetutils-2.0** (reference `ping -V` on Debian).
 
-`ft_ping` is a from-scratch implementation of the `ping` utility in C. The program:
+Below is a plain-language overview of how the program works. The rest of this document covers protocols, data structures, modules, and flags in detail.
 
-- builds ICMP **Echo Request** packets (type 8);
-- sends them over IPv4 using a **raw socket**;
-- receives **Echo Reply** packets (type 0) and ICMP **error messages** (types 3, 5, 11, etc.);
-- measures RTT (round-trip time) and prints a summary on exit.
+Russian version of the overview: [`docs/ru/ARCHITECTURE.md`](ru/ARCHITECTURE.md#как-это-работает).
 
-Output format matches **inetutils-2.0** (reference `ping -V` on Debian).
+---
+
+## Overview
+
+You run the program with a destination (IP address or hostname). Once per second (or faster in flood mode) it sends an ICMP Echo Request and waits for an ICMP Echo Reply. For each reply it prints a line with packet size, sequence number, TTL, and time in milliseconds. On exit it prints a summary: packets sent/received, loss, min/avg/max/stddev.
+
+### Step by step
+
+1. **Startup.** Command-line arguments (host, `-c`, `-v`, `-f`, etc.) are parsed into `t_ping` — the single session state object (socket, address, counters, options).
+
+2. **Root privileges.** A raw socket (`SOCK_RAW` + `IPPROTO_ICMP`) is required, so the program must start as root. The socket is opened as root, then privileges are dropped with `setuid` so the ping loop does not run as superuser.
+
+3. **DNS.** The hostname is resolved to IPv4 via `getaddrinfo` (IPv4 only).
+
+4. **Socket.** A raw ICMP socket is created; TTL, TOS, optional `-r` (no routing), and IP timestamp options are applied.
+
+5. **Main loop.** This is the core of the program:
+   - print header `PING host (ip): N data bytes`;
+   - send the first packet (plus `-l` preload packets with no delay, if set);
+   - run a `select` loop: wait for incoming packets (~10 ms), handle replies, and send the next probe on the `interval` timer (default 1 s, 10 ms with `-f`);
+   - stop on Ctrl+C (`SIGINT`), `-c` (N unique replies received), `-w` (wall-clock limit), or after `-c` plus `-W` seconds waiting for late replies.
+
+6. **Send.** Build an ICMP packet: type ECHO, id = low 16 bits of PID, incrementing `seq`, `gettimeofday` at the start of the payload for RTT, then data (56 bytes by default). Compute checksum, send with `sendto`.
+
+7. **Receive.** `recvmsg` reads a buffer containing the IP header and ICMP. If it is an Echo Reply with our `ident`, print a line, update statistics, mark duplicates by `seq`. Other ICMP messages (errors) are printed when `-v` is set.
+
+8. **Shutdown.** Print the statistics block, close the socket, free memory. Exit code 0 if at least one reply was received, otherwise 1.
+
+### Source files
+
+- `main.c` — init, argument parsing, main loop
+- `dns.c` — host resolution
+- `socket.c` — socket creation and options
+- `send.c` / `recv.c` — ICMP send and receive
+- `print.c` / `stats.c` — reply lines and final statistics
+- `checksum.c` — ICMP checksum
+- `signal.c` — Ctrl+C handling
+
+### Notable behavior
+
+- RTT is computed from the timestamp embedded in the payload (send time vs receive time), not from a timer around `sendto`/`recvmsg`.
+- `-c` counts **unique** replies; duplicate `seq` values are labeled `(DUP!)` but do not count toward the limit.
+- One host per run, IPv4 only.
 
 ---
 
 ## Table of contents
 
-1. [Constraints and requirements](#constraints-and-requirements)
-2. [File layout](#file-layout)
-3. [Protocol: what travels on the wire](#protocol-what-travels-on-the-wire)
-4. [`t_ping` structure and constants](#t_ping-structure-and-constants)
-5. [Full `main()` startup order](#full-main-startup-order)
-6. [Modules by file](#modules-by-file)
-7. [Main loop: state machine](#main-loop-state-machine)
-8. [Sending: building an ICMP packet](#sending-building-an-icmp-packet)
-9. [Receiving: parsing IP and ICMP](#receiving-parsing-ip-and-icmp)
-10. [Output: replies, errors, IP options](#output-replies-errors-ip-options)
-11. [Statistics and RTT math](#statistics-and-rtt-math)
-12. [All command-line flags](#all-command-line-flags)
-13. [Interaction diagrams](#interaction-diagrams)
-14. [Cross-platform notes](#cross-platform-notes)
-15. [Build](#build)
+1. [Overview](#overview)
+2. [Constraints and requirements](#constraints-and-requirements)
+3. [File layout](#file-layout)
+4. [Protocol: what travels on the wire](#protocol-what-travels-on-the-wire)
+5. [`t_ping` structure and constants](#t_ping-structure-and-constants)
+6. [Full `main()` startup order](#full-main-startup-order)
+7. [Modules by file](#modules-by-file)
+8. [Main loop: state machine](#main-loop-state-machine)
+9. [Sending: building an ICMP packet](#sending-building-an-icmp-packet)
+10. [Receiving: parsing IP and ICMP](#receiving-parsing-ip-and-icmp)
+11. [Output: replies, errors, IP options](#output-replies-errors-ip-options)
+12. [Statistics and RTT math](#statistics-and-rtt-math)
+13. [All command-line flags](#all-command-line-flags)
+14. [Interaction diagrams](#interaction-diagrams)
+15. [Cross-platform notes](#cross-platform-notes)
+16. [Build](#build)
 
 ---
 

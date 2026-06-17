@@ -82,12 +82,7 @@ round-trip min/avg/max/stddev = 1.234/1.345/1.456/0.111 ms
 
 ## How it works
 
-1. Creates a raw ICMP socket (`SOCK_RAW`, `IPPROTO_ICMP`)
-2. Resolves hostname via `getaddrinfo()`
-3. Sends ICMP `ECHO_REQUEST` packets with a timestamp in the payload
-4. Receives replies via `select()` + `recvmsg()` loop
-5. Calculates round-trip time from the embedded timestamp
-6. On `SIGINT`, prints min/avg/max/stddev statistics
+Plain-language overview (startup, main loop, send/receive, shutdown): **`docs/ARCHITECTURE.md`** · **`docs/ru/ARCHITECTURE.md`** (section «Как это работает»).
 
 ## Project structure
 
@@ -135,5 +130,7 @@ On macOS, `/sbin/ping` is BSD ping: use `-t` for TTL instead of `--ttl`; some in
 | `docs/ru/FLAGS.md` | Флаги командной строки |
 | `docs/TESTING.md` | Test checklist + `ft_ping` vs `ping` table |
 | `docs/VM_SETUP.md` | Debian VM setup and defense prep |
-| `docs/ARCHITECTURE.md` | Program flow and implementation |
+| `docs/ARCHITECTURE.md` | How the program works (plain overview) + protocol and modules |
 | `docs/ru/ARCHITECTURE.md` | Архитектура и реализация |
+| `docs/ru/HEADER.md` | Walkthrough of `ft_ping.h` (Russian) |
+| `docs/ru/code/README.md` | Walkthrough of all `.c` files (Russian) |
