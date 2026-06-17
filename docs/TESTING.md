@@ -2,6 +2,8 @@
 
 This document is a **manual test checklist** for the `ft_ping` project.
 
+Flag semantics: **`docs/FLAGS.md`** / **`docs/ru/FLAGS.md`**.
+
 ## Prerequisites
 
 - **Root privileges** are required (raw ICMP sockets):
@@ -24,6 +26,8 @@ make re
 ## Comparing with system `ping`
 
 Open two terminals and run the same row from the table below. The `ft_ping` column matches **Mandatory tests**, **Output format checks**, and **Bonus flags tests**; `ping` is the inetutils equivalent (`ping -V` on Debian VM). On macOS use `-t` instead of `--ttl` (already shown in the table).
+
+Flag details (mandatory vs bonus, behavior, defaults): **`FLAGS.md`** · **`ru/FLAGS.md`**.
 
 RTT values will differ; compare line **format**, not exact milliseconds.
 

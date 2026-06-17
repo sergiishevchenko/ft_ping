@@ -262,6 +262,9 @@ During defense, evaluators may:
 
 | Document | Content |
 |----------|---------|
+| `docs/FLAGS.md` | Command-line flags (mandatory + bonus) |
+| `docs/ru/FLAGS.md` | Флаги командной строки |
+| `docs/ru/ARCHITECTURE.md` | Архитектура (RU) |
 | `docs/TESTING.md` | Manual test commands (mandatory + bonus) |
 | `docs/ARCHITECTURE.md` | How the code is structured and runs |
 | `README.md` | Build, options, short VM summary |

@@ -38,7 +38,7 @@ Output format matches **inetutils-2.0** (reference `ping -V` on Debian).
 | Constraint | Effect in code |
 |------------|----------------|
 | Raw socket `SOCK_RAW` + `IPPROTO_ICMP` | Must run as root (`sudo`) |
-| 42 subject | Single host; no reverse DNS in replies; inetutils-style output |
+| Specification | Single host; no reverse DNS in replies; inetutils-style output |
 | Unreliable network | Loss, duplicates, reorder; IP options often filtered |
 | `-Wall -Wextra -Werror` | Strict compile with no warnings |
 
@@ -67,6 +67,7 @@ ft_ping/
 │   └── utils.c        # parse_number, decode_pattern, calc_stddev
 ├── Makefile
 └── docs/
+    └── ru/            # Russian documentation
 ```
 
 Dependencies between `.c` files are flat: every file includes only `ft_ping.h`. Modules communicate through the shared `t_ping` object and the global `g_stop` flag.
@@ -370,7 +371,7 @@ After `count` packets have been sent, the loop enters **finishing**: `interval` 
 
 ### `-w` (wall-clock timeout)
 
-`timeout_reached` compares **seconds only** (`tv_sec`), ignoring microseconds — sufficient for the subject requirements.
+`timeout_reached` compares **seconds only** (`tv_sec`), ignoring microseconds — matches inetutils behavior for this flag.
 
 ---
 
@@ -518,14 +519,18 @@ The ICMP checksum field is **zeroed** before calculation.
 
 ## All command-line flags
 
+See **`docs/FLAGS.md`** for the full flag reference: mandatory vs bonus, argument ranges, defaults, inetutils mapping, output effects, and examples.
+
+Quick lookup (implementation):
+
 | Flag | Field / effect | Notes |
 |------|----------------|-------|
-| `-v` | `options \|= OPT_VERBOSE` | id in header, ICMP error dumps |
+| `-v` | `options \|= OPT_VERBOSE` | **Mandatory.** id in header, ICMP error dumps |
 | `-?` / `--help` | `print_usage`, exit 0 | no root required |
 | `-c N` | `count = N` | stop after N **unique** replies |
 | `-f` | `OPT_FLOOD`, interval 10 ms | flood, dots on stdout |
 | `-l N` | `preload = N` | N packets at start with no delay |
-| `-n` | (no effect yet) | reserved for numeric-only |
+| `-n` | (accepted, no extra effect) | replies already numeric IP |
 | `-p hex` | `pattern_set`, `pattern[]` | payload template |
 | `-r` | `g_dontroute = 1` | `SO_DONTROUTE` |
 | `-s N` | `data_length = N` | data size, max 65507 |
@@ -633,7 +638,8 @@ sudo ./ft_ping -c 3 127.0.0.1
 
 | Document | Content |
 |----------|---------|
+| `docs/FLAGS.md` | Command-line flags (mandatory + bonus) |
 | `docs/TESTING.md` | Manual test checklist (mandatory + bonus) |
 | `docs/VM_SETUP.md` | Debian VM, SSH from 42 cluster |
-| `docs/ARCHITECTURE_RU.md` | This document in Russian |
+| `docs/ru/ARCHITECTURE.md` | This document in Russian |
 | `README.md` | Options and usage examples |

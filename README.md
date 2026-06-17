@@ -35,24 +35,26 @@ sudo ./ft_ping [options] <destination>
 
 Root privileges are required (raw sockets).
 
-### Options
+Full reference: **`docs/FLAGS.md`** · **`docs/ru/FLAGS.md`** — mandatory vs bonus, defaults, inetutils mapping, examples.
 
-| Flag | Description |
-|------|-------------|
-| `-v` | Verbose output (show ICMP errors, packet id in header) |
-| `-?` | Display help |
-| `-c <N>` | Stop after sending N packets |
-| `-s <N>` | Set payload size in bytes (default: 56) |
-| `-w <N>` | Stop after N seconds |
-| `-W <N>` | Seconds to wait for each response |
-| `--ttl <N>` | Set IP Time To Live |
-| `-T <N>` | Set Type of Service (0-255) |
-| `-f` | Flood ping (root only) |
-| `-l <N>` | Send N packets as fast as possible before normal mode |
-| `-p <hex>` | Fill payload with hex pattern |
-| `-n` | Numeric output only |
-| `-r` | Bypass routing tables (SO_DONTROUTE) |
-| `--ip-timestamp <FLAG>` | IP timestamp option: `tsonly` or `tsaddr` |
+### Options (summary)
+
+| Flag | Part | Description |
+|------|---------|-------------|
+| `-v` | mandatory | Verbose: id in header, ICMP errors about your packets, `IP Hdr Dump:` |
+| `-?` / `--help` | mandatory | Display help (no root) |
+| `-c <N>` | bonus | Stop after N **unique** replies |
+| `-s <N>` | bonus | Payload size in bytes (default: 56) |
+| `-w <N>` | bonus | Stop after N seconds (wall clock) |
+| `-W <N>` | bonus | Wait N seconds for replies after last send with `-c` (default: 10) |
+| `--ttl <N>` | bonus | IP TTL (default: 64); inetutils: `-t` |
+| `-T <N>` | bonus | IP Type of Service (0–255) |
+| `-f` | bonus | Flood ping (dots, 10 ms interval) |
+| `-l <N>` | bonus | Send first N packets with no delay |
+| `-p <hex>` | bonus | Fill payload with hex pattern (max 16 bytes) |
+| `-n` | bonus | Numeric replies (inetutils compatibility) |
+| `-r` | bonus | Bypass routing tables (`SO_DONTROUTE`) |
+| `--ip-timestamp <FLAG>` | bonus | IP timestamp: `tsonly` or `tsaddr` |
 
 ### Examples
 
@@ -123,3 +125,15 @@ ping -c 3 127.0.0.1              # terminal 2
 ```
 
 On macOS, `/sbin/ping` is BSD ping: use `-t` for TTL instead of `--ttl`; some inetutils flags (`-w`, `-n`, `-T`, `--ip-timestamp`) are not available.
+
+## Documentation
+
+| Document | Description |
+|----------|-------------|
+| `docs/FLAGS.md` | Command-line flags — mandatory + bonus |
+| `docs/ru/README.md` | Оглавление русской документации |
+| `docs/ru/FLAGS.md` | Флаги командной строки |
+| `docs/TESTING.md` | Test checklist + `ft_ping` vs `ping` table |
+| `docs/VM_SETUP.md` | Debian VM setup and defense prep |
+| `docs/ARCHITECTURE.md` | Program flow and implementation |
+| `docs/ru/ARCHITECTURE.md` | Архитектура и реализация |
