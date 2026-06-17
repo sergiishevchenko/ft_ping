@@ -6,6 +6,8 @@ ICMP is a layer-3 companion to IP. It does not carry application data; it carrie
 
 ## Role in the network stack
 
+For the full OSI vs TCP/IP picture, see [OSI-TCP-IP.md](OSI-TCP-IP.md). Short version:
+
 ```
 Application          ft_ping (user process)
        |

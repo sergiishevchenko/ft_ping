@@ -1,9 +1,10 @@
 # Network concepts in `ft_ping`
 
-This folder explains the three IPv4/ICMP building blocks that matter most for understanding how **ft_ping** works:
+This folder explains the network concepts that matter most for understanding how **ft_ping** works:
 
 | Document | Topic |
 |----------|--------|
+| [OSI-TCP-IP.md](OSI-TCP-IP.md) | OSI 7-layer and TCP/IP 4-layer models — where ping fits in the stack |
 | [ICMP.md](ICMP.md) | Internet Control Message Protocol — echo request/reply (detailed), errors, checksum |
 | [TTL.md](TTL.md) | Time To Live — hop limit, decrements, “Time to live exceeded” |
 | [TOS.md](TOS.md) | Type of Service — QoS byte in the IP header, `-T` flag |
