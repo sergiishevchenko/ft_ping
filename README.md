@@ -39,6 +39,8 @@ Full reference: **`docs/FLAGS.md`** — mandatory vs bonus, defaults, inetutils 
 
 Implementation details of **`getopt_long`**, `g_long_opts`, and `parse_args`: **`docs/GETOPT-LONG.md`**.
 
+How **`optarg`** carries flag values into **`parse_number`**: **`docs/OPTARG.md`**.
+
 ### Options (summary)
 
 | Flag | Part | Description |

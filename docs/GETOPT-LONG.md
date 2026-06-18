@@ -84,6 +84,8 @@ Call it in a loop until it returns `-1`.
 | `optopt` | `int` | Invalid option character when `getopt_long` returns `'?'` |
 | `opterr` | `int` | If non-zero, libc prints its own errors; `ft_ping` sets `opterr = 0` for custom messages |
 
+Detailed coverage of **`optarg`** (lifetime, `argv` trace, link to `parse_number`): [OPTARG.md](OPTARG.md).
+
 After the option loop finishes, **`optind` points at the first non-option argument** — usually the hostname.
 
 ```c
@@ -290,7 +292,7 @@ static void handle_option(t_ping *ping, int opt)
 }
 ```
 
-`optarg` is set by `getopt_long` before `handle_option` runs — e.g. for `--ttl 64`, `optarg` points to `"64"`.
+`optarg` is set by `getopt_long` before `handle_option` runs — e.g. for `--ttl 64`, `optarg` points to `"64"`. See [OPTARG.md](OPTARG.md).
 
 Long-option arguments can use `=` form as well:
 

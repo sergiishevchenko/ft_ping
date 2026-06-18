@@ -344,7 +344,7 @@ Filtering: Echo Reply only when `id == ping->ident`; foreign ICMP Echo Requests 
 
 | Function | Purpose |
 |----------|---------|
-| `parse_number` | `strtol` with range checks for `-c`, `-s`, `--ttl`, etc. |
+| `parse_number` | `strtol` with range checks for `-c`, `-s`, `--ttl`, etc. — [OPTARG.md](OPTARG.md) |
 | `decode_pattern` | Hex parse for `-p` (odd digit count → low nibble 0) |
 | `calc_stddev` | `sqrt(tsumsq/n - (tsum/n)²)` |
 
