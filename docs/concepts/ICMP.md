@@ -59,6 +59,113 @@ After the 8-byte header comes **optional data** (payload). In `ft_ping` the defa
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 ```
 
+### ICMP header — byte map (Echo)
+
+All echo messages share the same **8-byte** header (`PING_PKT_HDR_SZ` in `ft_ping.h`):
+
+| Offset | Field | Size | Echo Request | Echo Reply |
+|--------|-------|------|--------------|------------|
+| 0 | **type** | 1 byte | `8` (`ICMP_ECHO`) | `0` (`ICMP_ECHOREPLY`) |
+| 1 | **code** | 1 byte | `0` | `0` |
+| 2–3 | **checksum** | 2 bytes | RFC 1071 over header + data | recomputed on reply |
+| 4–5 | **identifier** | 2 bytes | `getpid() & 0xFFFF` | copied from request |
+| 6–7 | **sequence** | 2 bytes | 0, 1, 2, … | copied from request |
+
+`id` and `seq` are stored in **network byte order** on the wire (`htons` / `ntohs`). See [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md).
+
+### Complete ICMP message — header + payload
+
+An **ICMP message** = fixed header + variable **data**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│              ICMP HEADER (8 bytes, fixed)                   │
+│  ┌──────┬──────┬──────────┬────────────┬──────────────┐     │
+│  │ type │ code │ checksum │ identifier │ sequence     │     │
+│  │ 1 B  │ 1 B  │   2 B    │    2 B     │    2 B       │     │
+│  └──────┴──────┴──────────┴────────────┴──────────────┘     │
+├─────────────────────────────────────────────────────────────┤
+│              DATA / PAYLOAD (-s bytes, variable)            │
+│  ┌─────────────────────┬─────────────────────────────────┐  │
+│  │ struct timeval      │ pattern or default fill         │  │
+│  │ (send timestamp)    │ 00 01 02 … or -p hex repeat     │  │
+│  └─────────────────────┴─────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Default `-s 56` (56 data bytes):
+
+```
+ICMP message (64 bytes total = 8 header + 56 data)
+
+┌──────── 8 B header ────────┬──────────── 56 B data ────────────┐
+│ type code cksum id seq     │ timeval │ 00 01 02 03 … (rest)    │
+└────────────────────────────┴───────────────────────────────────┘
+                              ↑         ↑
+                         sizeof(      from init_data_buffer()
+                         timeval)     see FLAGS.md (-p)
+```
+
+The reply line `64 bytes from …` counts **ICMP header + data**, not the IP header.
+
+### On the wire: IPv4 packet wrapping ICMP
+
+`ft_ping` builds only the ICMP portion. The **kernel** prepends the IPv4 header on send; on receive, `recvmsg()` returns **IP + ICMP**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           IPv4 HEADER (~20 bytes, added by kernel)          │
+│  version, IHL, TTL, protocol=ICMP(1), src IP, dst IP, …     │
+├─────────────────────────────────────────────────────────────┤
+│                    ICMP MESSAGE (user/build)                │
+│  ┌──────────────── 8 B ICMP header ────────────────┐        │
+│  │ type | code | checksum | id | seq               │        │
+│  ├─────────────────────────────────────────────────┤        │
+│  │ data: [timeval][pattern or 00 01 02 …]  (-s)    │        │
+│  └─────────────────────────────────────────────────┘        │
+└─────────────────────────────────────────────────────────────┘
+         ↑ recv_ping skips ip_hl×4 bytes to reach ICMP
+```
+
+See [IPv4.md](IPv4.md) for IP header fields; [TTL.md](TTL.md) for `--ttl`.
+
+### Echo Request vs Echo Reply
+
+```
+  YOU (ft_ping)                              TARGET (kernel)
+       |                                           |
+       |  Echo Request                             |
+       |  type=8  id=X  seq=N                      |
+       |  data=[timeval|padding...]                |
+       |------------------------------------------>|
+       |                                           |
+       |  Echo Reply                               |
+       |  type=0  id=X  seq=N   ← same id, seq     |
+       |  data=[same bytes back]                   |
+       |<------------------------------------------|
+```
+
+| Field | Request (type 8) | Reply (type 0) |
+|-------|------------------|----------------|
+| type | `8` | `0` |
+| code | `0` | `0` |
+| identifier | set by sender | **unchanged** |
+| sequence | per probe | **unchanged** |
+| data | timeval + fill | **byte-for-byte copy** |
+| checksum | over full message | recomputed |
+
+### Size reference (`ft_ping`)
+
+| Piece | Default | Controlled by |
+|-------|---------|---------------|
+| ICMP header | 8 bytes | fixed (`PING_PKT_HDR_SZ`) |
+| ICMP data (payload) | 56 bytes | `-s` (`data_length`) |
+| **ICMP message** | **64 bytes** | 8 + 56 → shown in reply line |
+| IPv4 header | ~20 bytes | kernel; `ttl` from `--ttl` |
+| **IPv4 packet on wire** | ~84 bytes | IP + ICMP (approx.) |
+
+With `-s 0`: ICMP message is header only (8 bytes); no timeval, reply line shows `8 bytes` and no `time=…`.
+
 ### Common ICMP types relevant to ping
 
 | Type | Name | Code (examples) | Meaning |
@@ -176,15 +283,15 @@ Duplicate detection uses a bitmap (`recv_table` in `t_ping`): the same `seq` see
 
 ### Payload and round-trip time (RTT)
 
-Default data size is **56 bytes**. Layout in `ft_ping`:
+Default data size is **56 bytes**. Layout in `ft_ping` (see [Complete ICMP message — header + payload](#complete-icmp-message--header--payload) above):
 
 ```
 ┌──────────────────────────────────────────────────────────┐
 │  ICMP header (8 bytes)                                   │
 ├──────────────────────────────────────────────────────────┤
-│  bytes 0–7 (or 0–15): struct timeval from gettimeofday() │  ← send time
+│  first sizeof(struct timeval) bytes: send timestamp      │  ← gettimeofday() in send_ping()
 ├──────────────────────────────────────────────────────────┤
-│  rest: pattern (-p) or 0x00, 0x01, 0x02, …             │
+│  rest: pattern (-p) or 0x00, 0x01, 0x02, …             │  ← init_data_buffer()
 └──────────────────────────────────────────────────────────┘
 ```
 
