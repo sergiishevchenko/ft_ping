@@ -227,6 +227,169 @@ Fills the ICMP payload (after the embedded timestamp) with a repeating **hexadec
 | **Implementation** | `decode_pattern()` in `utils.c`, `init_data_buffer()` |
 | **Examples** | `-p ff -s 56 -c 1 127.0.0.1`; invalid: `./ft_ping -p zz 127.0.0.1` |
 
+#### How `decode_pattern()` reads the hex string
+
+One **byte** in the packet is built from **one or two** hex characters on the command line:
+
+| Hex chars | Meaning |
+|-----------|---------|
+| two (`de`) | full byte: first char = high nibble, second = low nibble |
+| one (`a`) | high nibble only; low nibble forced to `0` → byte `0xA0` |
+
+The function walks the string left to right with pointer `arg`. Each loop iteration produces one byte in `pattern[]`.
+
+**Core line** (`srcs/utils.c`):
+
+```c
+pattern[i] = (unsigned char)((high << 4) | low);   /* two digits */
+pattern[i] = (unsigned char)(high << 4);           /* one digit */
+```
+
+A byte is two 4-bit halves:
+
+```
+byte = [ high (4 bits) | low (4 bits) ]
+```
+
+- `high << 4` — puts `high` into the **left** half (same as `high × 16`).
+- `| low` — fills the **right** half.
+
+##### Example 1: `-p de` (two characters → one byte)
+
+String in memory:
+
+```
+index:   0    1    2
+char:   'd'  'e'  '\0'
+```
+
+| Step | Code | Result |
+|------|------|--------|
+| read first char | `high = hex_digit('d')` | `high = 13` |
+| advance | `arg++` | `arg` points at `'e'` |
+| second char exists | `if (*arg)` | true |
+| read second char | `low = hex_digit('e')` | `low = 14` |
+| merge | `(13 << 4) \| 14` | see below |
+
+Binary merge:
+
+```
+high = 13  →  1101
+high << 4  →  1101 0000   (= 208)
+
+low = 14   →  1110
+
+  1101 0000
+| 0000 1110
+  ─────────
+  1101 1110  = 222 = 0xDE
+```
+
+`pattern[0] = 0xDE`, `pattern_len = 1`.
+
+##### Example 2: `-p a` (one character → one byte)
+
+```
+index:   0    1
+char:   'a'  '\0'
+```
+
+| Step | Result |
+|------|--------|
+| `high = hex_digit('a')` | `10` |
+| `arg++` → `*arg` is `'\0'` | no second digit |
+| `pattern[0] = high << 4` | `10 << 4` = `160` = **`0xA0`** |
+
+Single digit → `0xA0`, not `0x0A`.
+
+##### Example 3: `-p dead` (four characters → two bytes)
+
+```
+d e | a d
+───   ───
+DE    AD
+```
+
+| Iteration | Reads | high | low | Byte |
+|-----------|-------|------|-----|------|
+| 1 | `d`, `e` | 13 | 14 | `0xDE` |
+| 2 | `a`, `d` | 10 | 13 | `0xAD` |
+
+`pattern = [0xDE, 0xAD]`, `pattern_len = 2`.
+
+##### Example 4: `-p ff`
+
+| | |
+|---|---|
+| `high` | `15` (`'f'`) |
+| `low` | `15` (`'f'`) |
+| byte | `(15 << 4) \| 15` = **`0xFF`** |
+
+##### Example 5: `-p deadbeef` (eight characters → four bytes)
+
+| Pair | Byte |
+|------|------|
+| `de` | `0xDE` |
+| `ad` | `0xAD` |
+| `be` | `0xBE` |
+| `ef` | `0xEF` |
+
+##### After decoding: fill the payload
+
+`decode_pattern()` only builds the **template** (max 16 bytes). `init_data_buffer()` in `srcs/send.c` repeats it across the full `-s` size:
+
+```c
+ping->data_buffer[i] = ping->pattern[i % ping->pattern_len];
+```
+
+Example: `-p deadbeef -s 56` → 4-byte template repeated 14 times to fill 56 data bytes.
+
+| `-p` input | Invalid |
+|------------|---------|
+| hex digits `0-9`, `a-f`, `A-F` | `zz` → `error in pattern near '…'` |
+
+#### Why `MAXPATTERN` is 16
+
+`MAXPATTERN` (`includes/ft_ping.h`) caps how many bytes are decoded from the `-p` argument into `ping->pattern[]`:
+
+```c
+# define MAXPATTERN  16
+
+unsigned char pattern[MAXPATTERN];   /* t_ping */
+```
+
+This is **not** the ICMP payload size (`-s`). It is only the **template** length.
+
+| Concept | Flag / field | Typical size |
+|---------|--------------|--------------|
+| Template from `-p` | `pattern[]`, `pattern_len` | up to **16 bytes** |
+| Full ICMP data | `-s`, `data_length` | default **56** bytes |
+
+After decoding, `init_data_buffer()` **repeats** the template to fill the whole payload:
+
+```
+-p deadbeef  →  template: DE AD BE EF  (4 bytes)
+-s 56        →  DE AD BE EF DE AD BE EF …  (56 bytes total)
+```
+
+So you do not type 56 bytes of hex on the command line — a short pattern is enough.
+
+**Why 16 specifically:**
+
+| Reason | Detail |
+|--------|--------|
+| **inetutils compatibility** | System `ping` (inetutils) uses the same 16-byte cap; `ft_ping` matches it for defense/tests |
+| **Practical** | A repeating template does not need to be as long as the payload |
+| **Simple storage** | Fixed `pattern[16]` inside `t_ping` — no extra `malloc` for the template |
+
+In `decode_pattern()`, the loop stops at 16 bytes; extra hex digits in the argument are **silently ignored**:
+
+```c
+while (*arg && i < MAXPATTERN)
+```
+
+Maximum hex input: **32 characters** (= 16 bytes × 2 nibbles each).
+
 ---
 
 ### `-n` (numeric)
