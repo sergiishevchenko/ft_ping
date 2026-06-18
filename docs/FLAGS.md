@@ -241,6 +241,40 @@ In inetutils, `-n` disables DNS lookups in **reply** lines so you always see num
 | **This project** | Replies always use `inet_ntoa()` (no reverse DNS). Flag is **accepted** for inetutils compatibility |
 | **Example** | `sudo ./ft_ping -n -c 1 google.com` |
 
+#### Why replies are already numeric: `inet_ntoa()`
+
+Each echo reply line is built in `print_echo_reply()` (`srcs/print.c`). The source address comes from the **socket address of the received packet**, not from a DNS lookup:
+
+```c
+printf("%d bytes from %s: icmp_seq=%u",
+    datalen,
+    inet_ntoa(((struct sockaddr_in *)msg->msg_name)->sin_addr),
+    ntohs(ICMP_HDR_SEQ(icmp_hdr)));
+```
+
+| Piece | Role |
+|-------|------|
+| `msg->msg_name` | `struct sockaddr_in` filled by `recvmsg()` — who sent the reply |
+| `sin_addr` | IPv4 address in binary (network byte order) |
+| `inet_ntoa()` | Converts that address to a dotted string (`"8.8.8.8"`) for `printf` |
+
+`inet_ntoa()` only formats an IP that is **already in the packet metadata**. It does **not** call `gethostbyaddr`, `getnameinfo`, or any reverse DNS. So every reply line is numeric by construction — there is no code path that would print `dns.google` instead of `8.8.8.8`.
+
+That is different from the **startup banner**, which still shows the hostname you typed:
+
+```c
+printf("PING %s (%s): %zu data bytes", ping->hostname, ping->ip_str, ...);
+```
+
+Forward DNS in `resolve_host()` (`getaddrinfo`) runs once to turn `google.com` into `ping->ip_str`; that is unrelated to `-n`.
+
+| Output line | Address shown | DNS involved |
+|-------------|---------------|--------------|
+| `PING google.com (142.250.…)` | hostname + IP from forward lookup | yes, once at start |
+| `64 bytes from 142.250.…: icmp_seq=0` | IP via `inet_ntoa()` | no |
+
+Because of this, `handle_option()` treats `-n` as a no-op (`else if (opt == 'n') ;`) — inetutils accepts the flag, and output already matches numeric reply behavior.
+
 ---
 
 ### `-r` (bypass routing)
