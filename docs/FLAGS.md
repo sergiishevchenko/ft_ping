@@ -390,6 +390,63 @@ while (*arg && i < MAXPATTERN)
 
 Maximum hex input: **32 characters** (= 16 bytes × 2 nibbles each).
 
+#### All cases: what fills the payload
+
+Payload size is always **`-s`** (default 56 data bytes). The pattern only affects **data after the embedded timestamp** (first 8 or 16 bytes of payload when size allows). It does **not** change the ICMP header.
+
+| Command | `pattern_set` | Payload fill (repeated to `-s` size) |
+|---------|---------------|-------------------------------------|
+| no `-p` | `false` | `0x00, 0x01, 0x02, 0x03, …` (byte index) |
+| `-p ff` | `true` | `0xFF, 0xFF, 0xFF, …` |
+| `-p deadbeef` | `true` | `0xDE, 0xAD, 0xBE, 0xEF, …` |
+| `-p` with no argument | — | **parse error** (`p:` in optstring requires a value) |
+| `-p zz` | — | **error** `error in pattern near '…'` |
+
+**Important:** “`-p` omitted” and “`-p` without hex” are **not** the same. Only omitting the flag entirely selects the `0x00, 0x01, 0x02, …` fill. Writing `-p` alone does not fall back to the default — `getopt_long` expects an argument.
+
+#### What you see on screen
+
+`-p` changes **packet bytes**, not the reply **line format**:
+
+| Mode | Terminal output |
+|------|-----------------|
+| normal (with or without `-p`) | `64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.123 ms` |
+| with `-f` (flood) | `.` on send, `\b` on reply — no per-packet lines |
+
+The hex pattern is inside the ICMP data; it is echoed back in the reply but is not printed as hex in the default output.
+
+#### Default fill: why `0x00, 0x01, 0x02, …` when `-p` is omitted
+
+At startup, `init_ping()` sets `pattern_set = false`. `init_data_buffer()` (`srcs/send.c`) then uses:
+
+```c
+ping->data_buffer[i] = (unsigned char)(i & 0xFF);
+```
+
+| Payload byte index `i` | Value |
+|------------------------|-------|
+| 0 | `0x00` |
+| 1 | `0x01` |
+| 2 | `0x02` |
+| … | … |
+| 255 | `0xFF` |
+| 256 | `0x00` again (`i & 0xFF` wraps) |
+
+**Why this default:**
+
+| Reason | Detail |
+|--------|--------|
+| **inetutils compatibility** | System `ping` uses the same index-based fill when `-p` is not given |
+| **No extra flag needed** | Payload is still non-empty and deterministic |
+| **Easy corruption check** | If byte 5 in the reply is not `0x05`, something altered the data |
+| **Any `-s`** | One formula works for any payload length without typing hex |
+
+With `-p`, `pattern_set = true` and the buffer is filled from `pattern[]` instead:
+
+```c
+ping->data_buffer[i] = ping->pattern[i % ping->pattern_len];
+```
+
 ---
 
 ### `-n` (numeric)
