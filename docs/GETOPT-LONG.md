@@ -390,12 +390,3 @@ Returns `'?'` before any socket or `getuid()` check → usage printed → exit 0
 | Entry point | `parse_args()` |
 | Hostname | `argv[optind]` after option loop |
 | Header | `<getopt.h>` (included via `ft_ping.h` or system headers) |
-
----
-
-## See also
-
-- [FLAGS.md](FLAGS.md) — every flag’s network behavior and defaults
-- [ARCHITECTURE.md](ARCHITECTURE.md) — `main()` order: `parse_args` before root check
-- [TTL.md](concepts/TTL.md) — what `--ttl` changes on the wire
-- `man 3 getopt_long` — full POSIX/libc documentation
