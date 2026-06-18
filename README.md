@@ -37,6 +37,8 @@ Root privileges are required (raw sockets).
 
 Full reference: **`docs/FLAGS.md`** — mandatory vs bonus, defaults, inetutils mapping, examples.
 
+Implementation details of **`getopt_long`**, `g_long_opts`, and `parse_args`: **`docs/GETOPT-LONG.md`**.
+
 ### Options (summary)
 
 | Flag | Part | Description |

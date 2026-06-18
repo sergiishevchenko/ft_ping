@@ -244,7 +244,7 @@ typedef struct s_ping {
 main(argc, argv)
 │
 ├─ init_ping(&ping)              // default values
-├─ parse_args(&ping, ...)        // getopt_long + resolve_host
+├─ parse_args(&ping, ...)        // getopt_long + resolve_host — see GETOPT-LONG.md
 │     └─ on -? → print_usage, exit(0)  WITHOUT root
 │
 ├─ if (getuid() != 0) → error "Operation not permitted"
@@ -273,7 +273,7 @@ Order matters: **args and DNS before root**, **socket before setuid**, **signals
 | `init_ping` | Zero `t_ping`, set defaults (56 bytes, TTL 64, 1 s interval, ident from PID) |
 | `print_usage` | Help text for `-?` |
 | `handle_option` | Map one short/long option into `t_ping` fields |
-| `parse_args` | `getopt_long`, single host, calls `resolve_host` |
+| `parse_args` | `getopt_long`, single host, calls `resolve_host` — [GETOPT-LONG.md](GETOPT-LONG.md) |
 | `timeout_reached` | Check `-w`: N seconds elapsed since `start_time` |
 | `ping_loop` | Preload, first packet, select/send/recv loop |
 | `cleanup` | Close socket, free memory |

@@ -2,6 +2,8 @@
 
 Reference for every command-line option in **ft_ping**. Output and behavior follow **inetutils-2.0** (`ping -V` on Debian). Compare with system `ping` using the table in `docs/TESTING.md`.
 
+For how options are **parsed** (`getopt_long`, `struct option`, `OPT_TTL`), see [GETOPT-LONG.md](GETOPT-LONG.md).
+
 ## General rules
 
 | Rule | Detail |
