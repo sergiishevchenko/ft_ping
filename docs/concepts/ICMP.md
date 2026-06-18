@@ -155,6 +155,7 @@ If `id` or `seq` differ from what you sent, the packet is not the answer to that
 - Distinguishes **multiple ping clients** on one machine.
 - `ft_ping` uses `getpid() & 0xFFFF` so two simultaneous `ft_ping` processes rarely share the same `id`.
 - Replies with a different `id` are **ignored** in `recv_ping()`.
+- Full walkthrough: [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md).
 
 **Sequence (`seq`)**
 
@@ -379,4 +380,4 @@ Linux uses `struct icmphdr`; macOS uses `struct icmp`. `includes/ft_ping.h` defi
 
 ### ICMP identifier
 
-Default: `ident = getpid() & 0xFFFF`. Replies are accepted only when `ntohs(ICMP_HDR_ID(icmp_hdr)) == ping->ident`, so multiple `ping` processes on one machine do not cross-match replies. See [Identifier and sequence in practice](#identifier-and-sequence-in-practice).
+Default: `ident = getpid() & 0xFFFF`. Replies are accepted only when `ntohs(ICMP_HDR_ID(icmp_hdr)) == ping->ident`, so multiple `ping` processes on one machine do not cross-match replies. See [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) for a detailed breakdown (PID, bit mask, send/recv flow, collisions).

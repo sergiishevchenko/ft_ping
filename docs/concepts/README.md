@@ -7,6 +7,7 @@ This folder explains the network concepts that matter most for understanding how
 | [OSI-TCP-IP.md](OSI-TCP-IP.md) | OSI 7-layer and TCP/IP 4-layer models — where ping fits in the stack |
 | [IPv4.md](IPv4.md) | IPv4 header — fields, layout, parsing, verbose dump |
 | [ICMP.md](ICMP.md) | Internet Control Message Protocol — echo request/reply (detailed), errors, checksum |
+| [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) | ICMP identifier — why `getpid() & 0xFFFF`, filtering replies, collisions |
 | [TTL.md](TTL.md) | Time To Live — hop limit, decrements, “Time to live exceeded” |
 | [TOS.md](TOS.md) | Type of Service — QoS byte in the IP header, `-T` flag |
 
