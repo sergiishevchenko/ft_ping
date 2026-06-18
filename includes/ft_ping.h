@@ -24,8 +24,14 @@
 # include <arpa/inet.h>
 # include <netdb.h>
 
+/*
+** ICMP header portability: macOS (BSD struct icmp) vs Linux (struct icmphdr)
+** use different field names. t_icmphdr + ICMP_HDR_* macros let send.c/recv.c
+** stay identical on both platforms.
+*/
 # ifdef __APPLE__
 
+/* BSD names members icmp_type, icmp_code, … in <netinet/ip_icmp.h> */
 typedef struct icmp	t_icmphdr;
 
 #  define ICMP_HDR_TYPE(p)		((p)->icmp_type)
@@ -34,6 +40,7 @@ typedef struct icmp	t_icmphdr;
 #  define ICMP_HDR_ID(p)		((p)->icmp_hun.ih_idseq.icd_id)
 #  define ICMP_HDR_SEQ(p)		((p)->icmp_hun.ih_idseq.icd_seq)
 
+/* Map Linux-style error type names to BSD constants in print.c */
 #  define ICMP_DEST_UNREACH		ICMP_UNREACH
 #  define ICMP_SOURCE_QUENCH	ICMP_SOURCEQUENCH
 #  define ICMP_TIME_EXCEEDED	ICMP_TIMXCEED
@@ -41,6 +48,7 @@ typedef struct icmp	t_icmphdr;
 
 # else
 
+/* Linux/glibc: flat struct icmphdr with type, code, un.echo.id, … */
 typedef struct icmphdr	t_icmphdr;
 
 #  define ICMP_HDR_TYPE(p)		((p)->type)
@@ -49,6 +57,7 @@ typedef struct icmphdr	t_icmphdr;
 #  define ICMP_HDR_ID(p)		((p)->un.echo.id)
 #  define ICMP_HDR_SEQ(p)		((p)->un.echo.sequence)
 
+/* RFC 792 echo types; fallback if headers omit the macros */
 #  ifndef ICMP_ECHOREPLY
 #   define ICMP_ECHOREPLY		0
 #  endif
@@ -58,81 +67,145 @@ typedef struct icmphdr	t_icmphdr;
 
 # endif
 
+/* ICMP data bytes; 56 + 8-byte hdr → "64 bytes" in reply (inetutils default) */
 # define PING_PKT_DATA_SZ		56
+/* Size of ICMP header (type, code, cksum, id, seq) */
 # define PING_PKT_HDR_SZ		8
+/* Max ICMP payload: 65535 IP max − 20 IP hdr − 8 ICMP hdr */
 # define PING_MAX_DATALEN		65507
+/* recvmsg buffer; holds max IPv4 datagram (64 KiB) */
 # define RECV_BUFSIZE			65536
+/* Outgoing IP TTL when --ttl not set; common OS default */
 # define PING_DEFAULT_TTL		64
+/* Microseconds between probes (1 s); inetutils default rate */
 # define PING_DEFAULT_INTERVAL	1000000
+/* Microseconds between probes in flood mode (-f); ~100 probes/s */
 # define PING_FLOOD_INTERVAL	10000
+/* Max bytes for -p pattern; repeats to fill payload */
 # define MAXPATTERN				16
+/* Duplicate bitmap: 128 bytes × 8 bits → track 1024 seq numbers */
 # define PING_CKTAB_SZ			128
 
+/* -v: print id in header, ICMP errors, IP Hdr Dump */
 # define OPT_VERBOSE		(1 << 0)
+/* -f: minimal output, fast send interval */
 # define OPT_FLOOD			(1 << 1)
+/* --ip-timestamp: attach IP timestamp option to probes */
 # define OPT_IPTIMESTAMP	(1 << 4)
 
+/* --ip-timestamp tsonly: record timestamps only */
 # define SOPT_TSONLY		(1 << 0)
+/* --ip-timestamp tsaddr: timestamp + address per hop */
 # define SOPT_TSADDR		(1 << 1)
 
+/*
+** IP option fallbacks for --ip-timestamp (RFC 791). Linux defines these in
+** <netinet/ip.h>; macOS may not — #ifndef keeps the OS value when present.
+*/
 # ifndef MAX_IPOPTLEN
+/* Max IPv4 options area (bytes); buffer size in set_ip_timestamp() */
 #  define MAX_IPOPTLEN		40
 # endif
 
 # ifndef IPOPT_TS_TSONLY
+/* Timestamp option: record time only (flag --ip-timestamp tsonly) */
 #  define IPOPT_TS_TSONLY	0
 # endif
 # ifndef IPOPT_TS_TSANDADDR
+/* Timestamp option: time + router address (flag tsaddr) */
 #  define IPOPT_TS_TSANDADDR	1
 # endif
 
 typedef struct s_ping_stat
 {
-	double	tmin;
-	double	tmax;
-	double	tsum;
-	double	tsumsq;
+	double	tmin;		/* shortest RTT (ms); init high sentinel until 1st reply */
+	double	tmax;		/* longest RTT (ms) */
+	double	tsum;		/* sum of RTTs for average */
+	double	tsumsq;		/* sum of RTT² for stddev (calc_stddev) */
 }	t_ping_stat;
 
 typedef struct s_ping
 {
+	/* raw ICMP socket; -1 until create_socket() */
 	int					sockfd;
 
+	/* target IPv4 + port (unused); filled by resolve_host() */
 	struct sockaddr_in	dest_addr;
+
+	/* CLI hostname argument; strdup'd for header line */
 	char				*hostname;
+
+	/* resolved target as "dotted.quad" for PING line */
 	char				ip_str[INET_ADDRSTRLEN];
 
+	/* probes sent (successful sendto) */
 	size_t				num_xmit;
+
+	/* echo replies accepted (incl. duplicates) */
 	size_t				num_recv;
+
+	/* duplicate replies (same seq seen twice) */
 	size_t				num_rept;
+
+	/* bitmap: bit set when seq was already received */
 	unsigned char		recv_table[PING_CKTAB_SZ];
 
+	/* ICMP id; getpid() & 0xFFFF — unique per process */
 	uint16_t			ident;
+
+	/* next ICMP seq; incremented after each send */
 	uint16_t			seq;
 
+	/* OPT_* bitmask from flags (-v, -f, --ip-timestamp) */
 	unsigned int		options;
+
+	/* ICMP payload bytes (-s); default PING_PKT_DATA_SZ */
 	size_t				data_length;
+
+	/* IP TTL (--ttl); default PING_DEFAULT_TTL */
 	int					ttl;
+
+	/* IP TOS (-T); -1 = do not setsockopt(IP_TOS) */
 	int					tos;
+
+	/* -c: stop after N unique replies; 0 = unlimited */
 	size_t				count;
+
+	/* µs between sends; PING_DEFAULT_INTERVAL or PING_FLOOD_INTERVAL */
 	long				interval;
+
+	/* -w: max run time (s); -1 = no wall-clock limit */
 	int					timeout;
+
+	/* -W: wait for late replies after -c done (s); default 10 */
 	int					linger;
+
+	/* -l: send this many probes before entering main loop */
 	unsigned long		preload;
 
+	/* -p: hex bytes repeated into payload */
 	unsigned char		pattern[MAXPATTERN];
+
+	/* valid length in pattern[]; default MAXPATTERN if -p not set */
 	int					pattern_len;
+
+	/* true when -p given; else auto 0x00,0x01,… fill */
 	bool				pattern_set;
 
+	/* SOPT_TSONLY or SOPT_TSADDR for --ip-timestamp */
 	unsigned int		ip_ts_type;
 
+	/* malloc'd payload template (pattern or default fill) */
 	unsigned char		*data_buffer;
 
+	/* session start; used for -w and statistics duration */
 	struct timeval		start_time;
 
+	/* min/avg/max/stddev RTT accumulators */
 	t_ping_stat			stats;
 }	t_ping;
 
+/* set to 1 by SIGINT handler; ends ping_loop */
 extern volatile sig_atomic_t	g_stop;
 
 void		parse_args(t_ping *ping, int argc, char **argv);
