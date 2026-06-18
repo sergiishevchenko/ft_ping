@@ -2,6 +2,8 @@
 
 **Type of Service (TOS)** is a single byte in the IPv4 header that historically carried **quality-of-service hints**: which packets should be preferred under congestion, and which path or queue to use. In **ft_ping**, TOS is optional and controlled with the **`-T`** flag.
 
+For the full IPv4 header layout, see [IPv4.md](IPv4.md).
+
 ---
 
 ## Where TOS lives: IPv4 header

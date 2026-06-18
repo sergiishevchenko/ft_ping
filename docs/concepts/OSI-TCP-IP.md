@@ -264,18 +264,6 @@ Fields you read from replies:
 | “`ft_ping` sends full IP packets” | It sends **ICMP only**; the kernel builds the IP header. |
 | “More layers = more headers on every packet” | A given protocol stack only adds the headers it needs; ping has no transport header. |
 
----
-
-## How this connects to other docs
-
-| Topic | Document |
-|-------|----------|
-| ICMP echo, errors, checksum | [ICMP.md](ICMP.md) |
-| TTL hop limit | [TTL.md](TTL.md) |
-| TOS / DSCP byte | [TOS.md](TOS.md) |
-| Modules, `t_ping`, packet diagrams | [ARCHITECTURE.md](../ARCHITECTURE.md) |
-
----
 
 ## Further reading (concepts)
 
