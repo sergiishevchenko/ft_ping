@@ -35,7 +35,7 @@ Every ICMP message has an 8-byte header. For Echo Request (type 8) and Echo Repl
 | **identifier** | 16 bits (2 bytes) | Tags the **process** (ping client) on the sender |
 | **sequence** | 16 bits (2 bytes) | Tags the **probe number** within that process |
 
-Both fields are stored in **network byte order** on the wire (`htons` on send, `ntohs` on receive).
+Both fields are stored in **network byte order** on the wire. Before send use `htons`; after receive use `ntohs` — see [Network byte order: `htons` and `ntohs`](#network-byte-order-htons-and-ntohs).
 
 ---
 
@@ -129,6 +129,89 @@ send #3:  id=42857, seq=2
 ```
 
 Every reply must echo back the same `id` and the matching `seq`.
+
+---
+
+## Network byte order: `htons` and `ntohs`
+
+`htons` and `ntohs` are conversion helpers from `<arpa/inet.h>`. They translate **16-bit** integers between:
+
+| Order | Meaning |
+|-------|---------|
+| **Host byte order** | How the CPU stores multi-byte values in RAM |
+| **Network byte order** | How multi-byte fields are laid out **in packets** (always big-endian) |
+
+| Function | Expands to | Direction | When |
+|----------|------------|-----------|------|
+| `htons(x)` | **h**ost **to** **n**etwork **s**hort | host → wire | writing `id` / `seq` into the ICMP header |
+| `ntohs(x)` | **n**etwork **to** **h**ost **s**hort | wire → host | reading `id` / `seq` from a received packet |
+
+**Short** = 16 bits (2 bytes). For 32-bit fields (e.g. IPv4 addresses) the same idea uses `htonl` / `ntohl` (**l**ong).
+
+### Why the internet cares about byte order
+
+CPUs disagree on which byte comes first for a multi-byte number:
+
+| Endianness | Example: value `0x1234` stored as two bytes |
+|------------|-----------------------------------------------|
+| **Little-endian** (x86, Apple Silicon) | `[34] [12]` — least significant byte first |
+| **Big-endian** (network / “wire”) | `[12] [34]` — most significant byte first |
+
+IP, ICMP, TCP, and UDP specify: **multi-byte header fields on the wire are big-endian**. Every host must convert on send and receive so that `ident = 1` always appears as bytes `00 01` in the packet, regardless of local CPU.
+
+Without conversion, a little-endian machine could put `ident = 1` into the packet as `01 00` — which other hosts would read as `256`.
+
+### In memory vs on the wire in `ft_ping`
+
+Inside the program, `ping->ident` and `ping->seq` are normal host-order `uint16_t` values. They are **never** written to the ICMP header directly.
+
+**Send** (`srcs/send.c`) — convert before storing in the packet:
+
+```c
+ICMP_HDR_ID(icmp_hdr) = htons(ping->ident);
+ICMP_HDR_SEQ(icmp_hdr) = htons(ping->seq);
+```
+
+**Receive** (`srcs/recv.c`) — convert before comparing or printing:
+
+```c
+ntohs(ICMP_HDR_ID(icmp_hdr)) == ping->ident
+```
+
+**Print** (`srcs/print.c`) — sequence in the reply line also comes from the wire:
+
+```c
+ntohs(ICMP_HDR_SEQ(icmp_hdr))   /* → icmp_seq=0, icmp_seq=1, … */
+```
+
+Never compare `ping->ident` to `ICMP_HDR_ID(icmp_hdr)` without `ntohs` on a little-endian host: the raw bytes in the buffer are network order; `ping->ident` is host order.
+
+### Worked example: `ident = 1`
+
+```
+Logical value:     1  =  0x0001
+
+In RAM (little-endian host):     01 00
+In ICMP packet (network):        00 01   ← htons() produces this layout
+
+After recv:
+  ICMP_HDR_ID in buffer  →  bytes 00 01
+  ntohs(...)             →  1
+  compare to ping->ident →  match
+```
+
+### On big-endian machines
+
+If host order already matches network order, `htons` and `ntohs` are often no-ops (they return the value unchanged). You still call them so the same source compiles and behaves correctly everywhere.
+
+### Rule of thumb for `ft_ping`
+
+| Location | Byte order | Action |
+|----------|------------|--------|
+| `ping->ident`, `ping->seq` | host | use as-is in C logic |
+| ICMP header in send buffer | network | `htons` on write |
+| ICMP header in recv buffer | network | `ntohs` on read |
+| `-v` banner `id 0x….` | host | `ping->ident` printed directly |
 
 ---
 
@@ -296,6 +379,10 @@ Partially related. `seq` handles ordering and duplicates within one client. `id`
 
 Unrelated topic (that is about signals and `sig_atomic_t`). Here `& 0xFFFF` is simple **bit masking** to fit a 32-bit PID into a 16-bit protocol field.
 
+### “I can skip `htons` / `ntohs` on my Mac”
+
+On some builds they appear to do nothing, but the ICMP header in the buffer is still defined as network byte order. Skipping conversion breaks on little-endian hosts when values are not symmetric (e.g. `ident = 0x0100`). Always convert at the host/wire boundary.
+
 ---
 
 ## Quick reference
@@ -307,5 +394,5 @@ Unrelated topic (that is about signals and `sig_atomic_t`). Here `& 0xFFFF` is s
 | Written to packet | `send_ping()` — `srcs/send.c` |
 | Checked on receive | `recv_ping()` — `srcs/recv.c` |
 | Shown with `-v` | `print_header()` — `srcs/stats.c` |
-| Wire format | Big-endian (`htons` / `ntohs`) |
+| Wire format | Big-endian — see [`htons` / `ntohs`](#network-byte-order-htons-and-ntohs) |
 | Field width | 16 bits (`uint16_t`) |
