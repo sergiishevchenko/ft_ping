@@ -2,7 +2,7 @@
 
 Reference for every command-line option in **ft_ping**. Output and behavior follow **inetutils-2.0** (`ping -V` on Debian). Compare with system `ping` using the table in `docs/TESTING.md`.
 
-For how options are **parsed** (`getopt_long`, `struct option`, `OPT_TTL`), see [GETOPT-LONG.md](GETOPT-LONG.md). For **`optarg`** and `parse_number`, see [OPTARG.md](OPTARG.md).
+For how options are **parsed** (`getopt_long`, `struct option`, `OPT_TTL`), see [GETOPT-LONG.md](GETOPT-LONG.md). For **`optarg`** and `parse_number`, see [OPTARG.md](OPTARG.md). For the **`ping->options` bitmask** (`-v`, `-f`, `--ip-timestamp`), see [Session flags](#session-flags-ping-options-bitmask) below.
 
 ## General rules
 
@@ -39,6 +39,118 @@ For how options are **parsed** (`getopt_long`, `struct option`, `OPT_TTL`), see 
 
 ---
 
+## Session flags: `ping->options` bitmask
+
+Not every CLI flag is stored in `t_ping.options`. Only **three** boolean modes use this field as a **bit mask** (`unsigned int` in `includes/ft_ping.h`). They are set in `handle_option()` (`srcs/main.c`) with `|=` so multiple flags can be active at once without overwriting each other:
+
+```c
+ping->options |= OPT_VERBOSE;      /* -v */
+ping->options |= OPT_FLOOD;        /* -f */
+ping->options |= OPT_IPTIMESTAMP;  /* --ip-timestamp */
+```
+
+Definitions (`includes/ft_ping.h`):
+
+```c
+# define OPT_VERBOSE      (1 << 0)   /* 1  — bit 0 */
+# define OPT_FLOOD        (1 << 1)   /* 2  — bit 1 */
+# define OPT_IPTIMESTAMP  (1 << 4)   /* 16 — bit 4 */
+```
+
+Bit layout (unused bits stay 0):
+
+```
+bit:     4       3   2   1   0
+         │       │   │   │   │
+flag:    OPT_IPTIMESTAMP   OPT_FLOOD  OPT_VERBOSE
+CLI:     --ip-timestamp    -f         -v
+```
+
+### Combined values
+
+| Command-line | `options` (decimal) | Bits (low 5) |
+|--------------|---------------------|--------------|
+| (none) | `0` | `00000` |
+| `-v` | `1` | `00001` |
+| `-f` | `2` | `00010` |
+| `-vf` | `3` | `00011` |
+| `--ip-timestamp tsonly` | `16` | `10000` |
+| `-vf --ip-timestamp tsonly` | `19` | `10011` |
+
+At startup, `init_ping()` zeroes the whole struct (`memset`), so **`options = 0`** until a flag above is parsed.
+
+### Where each bit is read
+
+| Bit | Set by | Checked in | Effect on output / behavior |
+|-----|--------|------------|----------------------------|
+| `OPT_VERBOSE` | `-v` | `print_header()` (`stats.c`), `print_icmp_error()` (`print.c`) | Header adds ICMP **id**; ICMP errors show **IP Hdr Dump**; unrelated errors still filtered without `-v` |
+| `OPT_FLOOD` | `-f` | `ping_loop()` (`main.c`), `print_echo_reply()` (`print.c`) | Interval → 10 ms; `.` on send, `\b` on reply — **no** per-packet reply lines |
+| `OPT_IPTIMESTAMP` | `--ip-timestamp` | `main()` before loop | Calls `set_ip_timestamp()`; if replies carry IP options, `print_ip_opt()` may print `TS:` / `RR:` |
+
+Code checks use `&` (test one bit):
+
+```c
+if (ping->options & OPT_VERBOSE)
+    printf(", id 0x%04x = %u", ping->ident, ping->ident);
+```
+
+### Terminal output examples
+
+**Default** (`options = 0`):
+
+```
+PING 127.0.0.1 (127.0.0.1): 56 data bytes
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.045 ms
+```
+
+**`-v`** (`options \|= OPT_VERBOSE`):
+
+```
+PING 127.0.0.1 (127.0.0.1): 56 data bytes, id 0x3a2f = 14895
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.045 ms
+```
+
+**`-f`** (`options \|= OPT_FLOOD`):
+
+```
+PING 127.0.0.1 (127.0.0.1): 56 data bytes
+......
+```
+
+Each `.` is one send; each reply erases one dot with backspace — no `64 bytes from …` lines.
+
+**`--ip-timestamp tsonly`** (`options \|= OPT_IPTIMESTAMP`):
+
+The bitmask itself is not printed. When the network returns IP options on replies:
+
+```
+64 bytes from 127.0.0.1: icmp_seq=0 ttl=64 time=0.045 ms
+ TS: 123456 789012 ...
+```
+
+Many networks drop IP options; packet loss with this flag is normal.
+
+### Flags **not** stored in `options`
+
+These CLI options write to **separate** `t_ping` fields instead:
+
+| CLI | Field |
+|-----|-------|
+| `-c` | `count` |
+| `-s` | `data_length` |
+| `-T` | `tos` |
+| `-w` | `timeout` |
+| `-W` | `linger` |
+| `-l` | `preload` |
+| `-p` | `pattern[]`, `pattern_set` |
+| `--ttl` | `ttl` |
+| `--ip-timestamp tsonly` / `tsaddr` | `ip_ts_type` (in addition to `OPT_IPTIMESTAMP`) |
+| `-r` | `g_dontroute` (global, not in `t_ping`) |
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full `t_ping` layout.
+
+---
+
 ## Mandatory flags
 
 ### `-?` and `--help`
@@ -71,7 +183,7 @@ The classic classroom test is `--ttl 1` toward a remote host: without `-v` you m
 | | • Without `-v`, unrelated ICMP errors (different inner destination) are **filtered out** |
 | | • On errors, prints **`IP Hdr Dump:`** and inner ICMP info |
 | **Typical test** | `sudo ./ft_ping --ttl 1 -c 3 8.8.8.8` and `sudo ./ft_ping -v --ttl 1 -c 3 8.8.8.8` |
-| **Implementation** | `OPT_VERBOSE` in `print.c` (`print_header`, `print_icmp_error`) and `stats.c` |
+| **Implementation** | `ping->options \|= OPT_VERBOSE` in `main.c`; read in `print.c` (`print_icmp_error`) and `stats.c` (`print_header`). See [Session flags](#session-flags-ping-options-bitmask) |
 | **Example** | `sudo ./ft_ping -v -c 2 127.0.0.1` |
 
 ---
@@ -194,7 +306,7 @@ Sends probes as fast as the loop allows (~100 packets per second with a 10 ms in
 | **Syntax** | `-f` |
 | **Default** | off; interval **1 s** |
 | **With `-f`** | interval **10 ms**; prints `.` on send, `\b` on reply — **no** per-packet lines |
-| **Implementation** | `OPT_FLOOD`, `PING_FLOOD_INTERVAL` in `main.c` / `print.c` |
+| **Implementation** | `ping->options \|= OPT_FLOOD`, `PING_FLOOD_INTERVAL` in `main.c` / `print.c`. See [Session flags](#session-flags-ping-options-bitmask) |
 | **Example** | `sudo ./ft_ping -f -c 100 127.0.0.1` |
 
 ---
@@ -525,7 +637,7 @@ Attaches an IPv4 **timestamp option** (RFC 791) to each outgoing probe — separ
 | **Behavior** | `setsockopt(IP_OPTIONS)`. If replies include options, prints `TS:` (and `RR:` if present) |
 | **Network** | Many routers/firewalls **drop** IP options → packet loss is normal; program must not crash |
 | **Invalid value** | `unsupported timestamp type` → exit non-zero |
-| **Implementation** | `set_ip_timestamp()` in `socket.c`, `print_ip_opt()` in `print.c` |
+| **Implementation** | `ping->options \|= OPT_IPTIMESTAMP` and `ip_ts_type` in `main.c`; `set_ip_timestamp()` in `socket.c`, `print_ip_opt()` in `print.c`. See [Session flags](#session-flags-ping-options-bitmask) |
 | **Examples** | `sudo ./ft_ping --ip-timestamp tsonly -c 1 8.8.8.8` |
 
 ---

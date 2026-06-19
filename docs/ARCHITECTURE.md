@@ -192,7 +192,7 @@ typedef struct s_ping {
     uint16_t            ident;            // ICMP identifier
     uint16_t            seq;              // next sequence number
 
-    unsigned int        options;          // OPT_* bit flags
+    unsigned int        options;          // OPT_* bit flags (-v, -f, --ip-timestamp); see FLAGS.md § Session flags
     size_t              data_length;      // payload size (excluding 8-byte ICMP hdr)
     int                 ttl;              // IP TTL
     int                 tos;              // IP TOS (-1 = unset)
@@ -226,6 +226,11 @@ typedef struct s_ping {
 | `PING_FLOOD_INTERVAL` | 10 000 | 10 ms in `-f` mode |
 | `PING_CKTAB_SZ` | 128 | seq bit table (1024 numbers) |
 | `MAXPATTERN` | 16 | max hex pattern length for `-p` |
+| `OPT_VERBOSE` | `1 << 0` (1) | `-v`: verbose header and ICMP error dumps |
+| `OPT_FLOOD` | `1 << 1` (2) | `-f`: flood mode |
+| `OPT_IPTIMESTAMP` | `1 << 4` (16) | `--ip-timestamp`: attach IP timestamp option |
+
+Only `-v`, `-f`, and `--ip-timestamp` set `ping->options` (via `|=` in `handle_option()`). All other flags use dedicated fields — bitmask layout, combined values, and terminal examples are in **`docs/FLAGS.md`** (section *Session flags: `ping->options` bitmask*).
 
 ### Global variables
 
@@ -556,7 +561,7 @@ The ICMP checksum field is **zeroed** before calculation.
 
 ## All command-line flags
 
-See **`docs/FLAGS.md`** for the full flag reference: mandatory vs bonus, argument ranges, defaults, inetutils mapping, output effects, and examples.
+See **`docs/FLAGS.md`** for the full flag reference: mandatory vs bonus, argument ranges, defaults, inetutils mapping, output effects, and examples. The **`ping->options` bitmask** (`-v`, `-f`, `--ip-timestamp`) is documented in FLAGS.md § *Session flags*.
 
 Quick lookup (implementation):
 
