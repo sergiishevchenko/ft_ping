@@ -4,6 +4,8 @@
 
 Implementation: `resolve_host()` in `srcs/dns.c`, called from `parse_args()` in `srcs/main.c`.
 
+For a dedicated walkthrough of `getaddrinfo()`, the full `resolve_host()` source, `ai_addr`, socket types, and the `hostname` / `ip_str` / `dest_addr` comparison table, see **[GETADDRINFO.md](GETADDRINFO.md)**.
+
 ---
 
 ## What DNS does (overview)
@@ -89,128 +91,14 @@ Resolution is **not repeated** if the target’s IP changes in DNS during a long
 
 ---
 
-## `resolve_host()` step by step
+## `resolve_host()` and `getaddrinfo()`
 
-Full source (`srcs/dns.c`):
+See **[GETADDRINFO.md](GETADDRINFO.md)** for:
 
-```c
-int	resolve_host(t_ping *ping, const char *host)
-{
-	struct addrinfo	hints;
-	struct addrinfo	*res;
-	int				ret;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_INET;
-	hints.ai_socktype = SOCK_RAW;
-	hints.ai_protocol = IPPROTO_ICMP;
-	ret = getaddrinfo(host, NULL, &hints, &res);
-	if (ret != 0)
-		return (-1);
-	ping->dest_addr = *(struct sockaddr_in *)res->ai_addr;
-	inet_ntop(AF_INET, &ping->dest_addr.sin_addr,
-		ping->ip_str, INET_ADDRSTRLEN);
-	ping->hostname = strdup(host);
-	if (!ping->hostname)
-	{
-		freeaddrinfo(res);
-		return (-1);
-	}
-	freeaddrinfo(res);
-	return (0);
-}
-```
-
-### 1. Zero `hints`
-
-`memset(&hints, 0, sizeof(hints))` — unset fields mean “no preference” except where we set them explicitly.
-
-### 2. Restrict to IPv4 ICMP
-
-| Hint | Value | Why |
-|------|-------|-----|
-| `ai_family` | `AF_INET` | IPv4 only; no AAAA / IPv6 |
-| `ai_socktype` | `SOCK_RAW` | Matches how we open the socket later |
-| `ai_protocol` | `IPPROTO_ICMP` | ICMP echo, not TCP/UDP |
-
-These hints tell the resolver which kind of address to return. `ft_ping` does not support IPv6.
-
-### 3. `getaddrinfo(host, NULL, &hints, &res)`
-
-Modern POSIX API replacing `gethostbyname()`.
-
-| Argument | Value | Meaning |
-|----------|-------|---------|
-| `host` | CLI string | `"8.8.8.8"` or `"google.com"` |
-| `service` | `NULL` | No port (ICMP has no ports) |
-| `hints` | filters above | IPv4, raw, ICMP |
-| `res` | out pointer | Linked list of results |
-
-On success, `res->ai_addr` points to a `struct sockaddr_in` ready for `sendto()`.
-
-On failure (`ret != 0`), `parse_args()` prints `unknown host` and exits. `gai_strerror(ret)` is **not** printed — inetutils-style simple message.
-
-### 4. Copy address → `dest_addr`
-
-```c
-ping->dest_addr = *(struct sockaddr_in *)res->ai_addr;
-```
-
-Used on every `sendto()` in `send_ping()`:
-
-```c
-sendto(ping->sockfd, packet, pkt_sz, 0,
-    (struct sockaddr *)&ping->dest_addr, sizeof(ping->dest_addr));
-```
-
-### 5. Dotted string → `ip_str`
-
-```c
-inet_ntop(AF_INET, &ping->dest_addr.sin_addr, ping->ip_str, INET_ADDRSTRLEN);
-```
-
-Thread-safe conversion to printable form (`"142.250.185.46"`) for the header line. Buffer size `INET_ADDRSTRLEN` (16) fits any IPv4 string.
-
-### 6. Save original CLI string → `hostname`
-
-```c
-ping->hostname = strdup(host);
-```
-
-Keeps **exactly what the user typed** for output:
-
-```
-PING google.com (142.250.185.46): 56 data bytes
---- google.com ping statistics ---
-```
-
-If you pass `8.8.8.8`, both `hostname` and `ip_str` show the same address.
-
-### 7. `freeaddrinfo(res)`
-
-Release the linked list allocated by `getaddrinfo()`. Must be called even after copying the address.
-
----
-
-## Three related fields in `t_ping`
-
-| Field | Content | Example (`google.com`) | Used for |
-|-------|---------|------------------------|----------|
-| `hostname` | CLI argument (strdup) | `google.com` | Header, statistics title |
-| `ip_str` | Resolved IPv4 text | `142.250.185.46` | Header parenthesis |
-| `dest_addr` | Binary `sockaddr_in` | `sin_addr` in network order | `sendto()` destination |
-
-```
-User types:  google.com
-                 │
-                 ▼
-         resolve_host()
-                 │
-     ┌───────────┼───────────┐
-     ▼           ▼           ▼
- hostname     ip_str     dest_addr
- (display)   (display)   (network)
-```
+- Full `resolve_host()` source (`srcs/dns.c`)
+- How `getaddrinfo()` works (numeric IP vs hostname, `hints`, `ai_addr`)
+- Comparison table: `hostname` vs `ip_str` vs `dest_addr`
+- Line-by-line walkthrough and `sendto()` connection
 
 ---
 

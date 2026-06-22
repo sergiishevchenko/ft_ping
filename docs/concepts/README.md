@@ -5,7 +5,8 @@ This folder explains the network concepts that matter most for understanding how
 | Document | Topic |
 |----------|--------|
 | [OSI-TCP-IP.md](OSI-TCP-IP.md) | OSI 7-layer and TCP/IP 4-layer models — where ping fits in the stack |
-| [DNS.md](DNS.md) | DNS — forward lookup, `getaddrinfo`, no reverse DNS on replies |
+| [DNS.md](DNS.md) | DNS — forward lookup, no reverse DNS on replies |
+| [GETADDRINFO.md](GETADDRINFO.md) | `getaddrinfo()` — full `resolve_host()` code, `ai_addr`, `hostname` / `ip_str` / `dest_addr` |
 | [IPv4.md](IPv4.md) | IPv4 header — fields, layout, parsing, verbose dump |
 | [ICMP.md](ICMP.md) | Internet Control Message Protocol — echo request/reply (detailed), errors, checksum |
 | [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) | ICMP identifier — why `getpid() & 0xFFFF`, filtering replies, collisions |
