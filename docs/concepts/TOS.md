@@ -34,7 +34,7 @@ On the wire this byte is often called:
 
 ## Classic TOS layout (historical)
 
-Originally (RFC 791), the byte was structured as:
+Originally ([RFC 791](../rfc/rfc791.txt)), the byte was structured as:
 
 ```
   0   1   2   3   4   5   6   7

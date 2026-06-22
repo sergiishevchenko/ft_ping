@@ -67,7 +67,7 @@ All echo messages share the same **8-byte** header (`PING_PKT_HDR_SZ` in `ft_pin
 |--------|-------|------|--------------|------------|
 | 0 | **type** | 1 byte | `8` (`ICMP_ECHO`) | `0` (`ICMP_ECHOREPLY`) |
 | 1 | **code** | 1 byte | `0` | `0` |
-| 2–3 | **checksum** | 2 bytes | RFC 1071 over header + data | recomputed on reply |
+| 2–3 | **checksum** | 2 bytes | [RFC 1071](../rfc/rfc1071.txt) over header + data | recomputed on reply |
 | 4–5 | **identifier** | 2 bytes | `getpid() & 0xFFFF` | copied from request |
 | 6–7 | **sequence** | 2 bytes | 0, 1, 2, … | copied from request |
 
@@ -226,7 +226,7 @@ On **127.0.0.1** (loopback), the same machine is both sender and responder: the 
 |-------|-------------|-------|
 | **type** | `8` (`ICMP_ECHO`) | Fixed for all ping probes |
 | **code** | `0` | Must be zero for echo |
-| **checksum** | RFC 1071 | Over header + entire payload |
+| **checksum** | [RFC 1071](../rfc/rfc1071.txt) | Over header + entire payload |
 | **identifier** | Process-chosen 16-bit value | Stays constant for one `ft_ping` run |
 | **sequence** | Per-probe counter | Usually starts at 0 and increments |
 | **data** | Arbitrary bytes | Often includes a send timestamp |
@@ -394,7 +394,7 @@ Only type **0** with matching **id** counts as a successful ping reply for stati
 
 ---
 
-## Checksum (RFC 1071)
+## Checksum ([RFC 1071](../rfc/rfc1071.txt))
 
 The ICMP checksum covers the **entire ICMP message** (header + data). Algorithm:
 
@@ -446,7 +446,7 @@ Requires **root** (`sudo`): only privileged processes may open raw ICMP sockets 
 | Header | `type = ICMP_ECHO (8)`, `code = 0` |
 | Identity | `id = htons(getpid() & 0xFFFF)`, `seq = htons(ping->seq)` |
 | Payload | `gettimeofday()` at start of data (for RTT), then pattern or default fill |
-| Checksum | RFC 1071 over full message |
+| Checksum | [RFC 1071](../rfc/rfc1071.txt) over full message |
 | Send | `sendto(sockfd, packet, …)` — **ICMP only**, kernel adds IP |
 
 After a successful send: `num_xmit++`, `seq++`.
@@ -488,3 +488,9 @@ Linux uses `struct icmphdr`; macOS uses `struct icmp`. `includes/ft_ping.h` defi
 ### ICMP identifier
 
 Default: `ident = getpid() & 0xFFFF`. Replies are accepted only when `ntohs(ICMP_HDR_ID(icmp_hdr)) == ping->ident`, so multiple `ping` processes on one machine do not cross-match replies. See [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) for a detailed breakdown (PID, bit mask, send/recv flow, collisions).
+
+## Further reading
+
+- [RFC 792](../rfc/rfc792.txt) — ICMP message formats, echo, errors
+- [RFC 1071](../rfc/rfc1071.txt) — checksum algorithm
+- [RFC 1122](../rfc/rfc1122.txt) — host echo reply requirements

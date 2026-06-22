@@ -100,11 +100,12 @@ ft_ping/
 │   ├── recv.c         # recv_ping — recvmsg and dispatch
 │   ├── print.c        # print_echo_reply, print_icmp_error, IP options
 │   ├── stats.c        # print_header, print_statistics
-│   ├── checksum.c     # checksum — RFC 1071
+│   ├── checksum.c     # checksum — RFC 1071 (see docs/rfc/rfc1071.txt)
 │   ├── signal.c       # setup_signals — SIGINT → g_stop
 │   └── utils.c        # parse_number, decode_pattern, calc_stddev
 ├── Makefile
 └── docs/
+    ├── rfc/           # RFC 791, 792, 1071, 1122 — standards reference
 ```
 
 Dependencies between `.c` files are flat: every file includes only `ft_ping.h`. Modules communicate through the shared `t_ping` object and the global `g_stop` flag.
@@ -115,7 +116,7 @@ Dependencies between `.c` files are flat: every file includes only `ft_ping.h`. 
 
 ### Outgoing packet (Echo Request)
 
-The program passes **only the ICMP message** to `sendto()`. The kernel wraps it in IP:
+The program passes **only the ICMP message** to `sendto()`. The kernel wraps it in an IPv4 header ([RFC 791](rfc/rfc791.txt)):
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
@@ -140,7 +141,7 @@ The program passes **only the ICMP message** to `sendto()`. The kernel wraps it 
 | code | 0 |
 | id | `getpid() & 0xFFFF` — distinguishes this session from others |
 | sequence | incremented after each successful send |
-| checksum | RFC 1071 over the whole ICMP message |
+| checksum | [RFC 1071](rfc/rfc1071.txt) over the whole ICMP message |
 | data | `struct timeval` + template from `data_buffer` |
 
 The `64 bytes from ...` line in a reply refers to **ICMP + data** (8 + 56 by default), not the full IP packet.
@@ -336,7 +337,7 @@ Filtering: Echo Reply only when `id == ping->ident`; foreign ICMP Echo Requests 
 
 | Function | Purpose |
 |----------|---------|
-| `checksum` | 16-bit one's complement sum per RFC 1071 |
+| `checksum` | 16-bit one's complement sum per [RFC 1071](rfc/rfc1071.txt) |
 
 ### `signal.c`
 
@@ -546,7 +547,7 @@ round-trip min/avg/max/stddev = a/b/c/d ms
 
 RTT line is printed only when `data_length >= sizeof(timeval)` — otherwise timing is impossible.
 
-### Checksum (RFC 1071)
+### Checksum ([RFC 1071](rfc/rfc1071.txt))
 
 Algorithm in `checksum.c`:
 
@@ -673,3 +674,16 @@ make        # build
 make re     # fclean + all
 sudo ./ft_ping -c 3 127.0.0.1
 ```
+
+---
+
+## RFC standards
+
+Full official text: **[docs/rfc/](rfc/README.md)**
+
+| RFC | Document |
+|-----|----------|
+| 791 | [IPv4 — Internet Protocol](rfc/rfc791.txt) |
+| 792 | [ICMP](rfc/rfc792.txt) |
+| 1071 | [Internet checksum](rfc/rfc1071.txt) |
+| 1122 | [Host requirements (ICMP echo)](rfc/rfc1122.txt) |

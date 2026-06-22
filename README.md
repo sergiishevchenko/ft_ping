@@ -88,6 +88,8 @@ round-trip min/avg/max/stddev = 1.234/1.345/1.456/0.111 ms
 
 How the program works (flow, functions, module interaction): **`docs/ARCHITECTURE.md`**.
 
+RFC standards (IPv4, ICMP, checksum, host requirements): **`docs/rfc/README.md`**.
+
 ## Project structure
 
 ```
@@ -103,7 +105,7 @@ ft_ping/
     ├── recv.c          # ICMP response parsing and dispatch
     ├── print.c         # Output formatting, ICMP error display, IP options
     ├── stats.c         # Header and final statistics
-    ├── checksum.c      # RFC 1071 Internet checksum
+    ├── checksum.c      # Internet checksum — see docs/rfc/rfc1071.txt
     ├── signal.c        # SIGINT handler
     └── utils.c         # Number parsing, hex pattern decoding
 ```

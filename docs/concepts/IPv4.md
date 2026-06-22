@@ -2,7 +2,7 @@
 
 Every **ft_ping** probe travels inside an **IPv4 packet**. On send, your code supplies only the ICMP message; the **kernel builds the IP header**. On receive, a raw socket delivers **IP + ICMP**, and the program parses `struct ip` before touching ICMP.
 
-This page describes the IPv4 header layout (RFC 791), field by field, and how **ft_ping** reads or configures each part.
+This page describes the IPv4 header layout ([RFC 791](../rfc/rfc791.txt)), field by field, and how **ft_ping** reads or configures each part.
 
 ---
 
@@ -195,7 +195,7 @@ Outgoing probes always use ICMP; the kernel sets `ip_p = IPPROTO_ICMP`.
 
 Covers **only the IP header** (not ICMP). Recalculated when TTL changes in transit.
 
-Algorithm: same RFC 1071 style as ICMP checksum. Computed by the kernel on send and by each router that decrements TTL.
+Algorithm: same [RFC 1071](../rfc/rfc1071.txt) style as ICMP checksum. Computed by the kernel on send and by each router that decrements TTL.
 
 Verbose dump: `cks` → `ntohs(ip_hdr->ip_sum)`.
 
@@ -350,4 +350,7 @@ Reply line `64 bytes from …` is **ICMP only** (8 + 56), not including the 20-b
 | `srcs/dns.c` | Resolve hostname → destination IPv4 |
 | `includes/ft_ping.h` | `ip_str`, `dest_addr` |
 
-**RFC 791** — Internet Protocol (IPv4 header definition).
+## Further reading
+
+- [RFC 791](../rfc/rfc791.txt) — Internet Protocol (IPv4 header, options)
+- [RFC 1071](../rfc/rfc1071.txt) — IP header checksum algorithm

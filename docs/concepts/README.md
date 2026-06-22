@@ -11,10 +11,12 @@ This folder explains the network concepts that matter most for understanding how
 | [TTL.md](TTL.md) | Time To Live — hop limit, decrements, “Time to live exceeded” |
 | [TOS.md](TOS.md) | Type of Service — QoS byte in the IP header, `-T` flag |
 
+**RFC standards:** [rfc/README.md](../rfc/README.md) — [791](../rfc/rfc791.txt), [792](../rfc/rfc792.txt), [1071](../rfc/rfc1071.txt), [1122](../rfc/rfc1122.txt).
+
 Each page covers:
 
 1. **What it is** — field or protocol role on the wire
 2. **How it works** — packet layout and typical network behavior
 3. **In ft_ping** — flags, source files, and what you see in output
 
-For program structure and module map, see [ARCHITECTURE.md](../ARCHITECTURE.md). For CLI flags, see [FLAGS.md](../FLAGS.md).
+For program structure and module map, see [ARCHITECTURE.md](../ARCHITECTURE.md). For CLI flags, see [FLAGS.md](../FLAGS.md). For RFC standards, see [rfc/](../rfc/README.md).

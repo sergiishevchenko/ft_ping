@@ -625,7 +625,7 @@ Sets `SO_DONTROUTE` on the socket so packets are sent **without consulting the n
 
 ### `--ip-timestamp <flag>`
 
-Attaches an IPv4 **timestamp option** (RFC 791) to each outgoing probe — separate from ICMP and from the `time=… ms` RTT in normal output. Routers that support it can record time (and optionally their address) as the packet passes; if the reply includes IP options, `ft_ping` prints a `TS:` block (and `RR:` for record-route if present). Many modern networks **strip or drop** packets with IP options, so loss with this flag is normal; the program must handle that without crashing. Accepted values: `tsonly` (timestamps only) and `tsaddr` (timestamp + address per hop). Anything else → `unsupported timestamp type`.
+Attaches an IPv4 **timestamp option** ([RFC 791](rfc/rfc791.txt)) to each outgoing probe — separate from ICMP and from the `time=… ms` RTT in normal output. Routers that support it can record time (and optionally their address) as the packet passes; if the reply includes IP options, `ft_ping` prints a `TS:` block (and `RR:` for record-route if present). Many modern networks **strip or drop** packets with IP options, so loss with this flag is normal; the program must handle that without crashing. Accepted values: `tsonly` (timestamps only) and `tsaddr` (timestamp + address per hop). Anything else → `unsupported timestamp type`.
 
 | | |
 |---|---|

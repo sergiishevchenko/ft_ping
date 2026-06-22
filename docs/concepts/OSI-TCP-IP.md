@@ -267,7 +267,7 @@ Fields you read from replies:
 
 ## Further reading (concepts)
 
-- **RFC 791** — IPv4
-- **RFC 792** — ICMP
-- **RFC 1122** — Host requirements (ICMP echo handling)
+- [RFC 791](../rfc/rfc791.txt) — IPv4
+- [RFC 792](../rfc/rfc792.txt) — ICMP
+- [RFC 1122](../rfc/rfc1122.txt) — Host requirements (ICMP echo handling)
 - OSI vs TCP/IP: both are **models**; the running code on Linux follows the TCP/IP layering with BSD sockets as the API boundary between user space and kernel.
