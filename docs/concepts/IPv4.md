@@ -210,7 +210,7 @@ Four bytes each (`struct in_addr` / `in_addr_t`).
 | **Source** | Your host’s IP | Remote host (shown as `bytes from X`) |
 | **Destination** | Target (`ping->dest_addr`) | Your host |
 
-**DNS:** CLI hostname is resolved once to `dest_addr` / `ip_str` in `resolve_host()`. Reply lines use the **source IP from the packet**, not reverse DNS.
+**DNS:** CLI hostname is resolved once to `dest_addr` / `ip_str` in `resolve_host()`. Reply lines use the **source IP from the packet**, not reverse DNS. See [DNS.md](DNS.md).
 
 **ICMP errors:** `print_icmp_error()` compares the **inner** (quoted) packet’s `ip_dst` to `ping->dest_addr` to filter unrelated errors:
 

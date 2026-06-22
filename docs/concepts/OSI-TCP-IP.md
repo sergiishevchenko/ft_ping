@@ -162,7 +162,7 @@ Each layer uses its own addressing scheme. A single ping crosses all of them:
 | Internet (L3) | `142.250.185.46` | Global IPv4 |
 | Data link (L2) | `aa:bb:cc:dd:ee:ff` (MAC) | One broadcast domain (hop) |
 
-**DNS** (`resolve_host()` in `srcs/dns.c`) resolves the hostname to IPv4 at **application** setup time. After that, probes use `struct sockaddr_in` with the binary IPv4 address.
+**DNS** (`resolve_host()` in `srcs/dns.c`) resolves the hostname to IPv4 at **application** setup time. After that, probes use `struct sockaddr_in` with the binary IPv4 address. See [DNS.md](DNS.md).
 
 **ARP** (Address Resolution Protocol) maps the **next hop** IP to a MAC address on the local link. `ft_ping` never calls ARP; the kernel performs it when emitting frames.
 
