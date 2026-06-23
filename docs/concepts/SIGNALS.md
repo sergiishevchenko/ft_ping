@@ -231,15 +231,15 @@ sequenceDiagram
     participant User
     participant OS
     participant Handler as sig_int_handler
-    participant Loop as ping_loop
+    participant PingMain as ping_loop
     participant Stats as print_statistics
 
     User->>OS: Ctrl+C
     OS->>Handler: SIGINT
     Handler->>Handler: g_stop = 1
-    Note over Loop: select may return EINTR
-    Loop->>Loop: while (!g_stop) → exit
-    Loop->>Stats: print_statistics()
+    Note over PingMain: select may return EINTR
+    PingMain->>PingMain: while (!g_stop) then exit
+    PingMain->>Stats: print_statistics()
 ```
 
 ---
