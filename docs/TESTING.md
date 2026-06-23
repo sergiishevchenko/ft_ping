@@ -4,6 +4,8 @@ This document is a **manual test checklist** for the `ft_ping` project.
 
 Flag semantics: **`docs/FLAGS.md`**.
 
+Per-command **code flow** (functions, stop conditions, flag → field mapping): **`docs/COMMAND_FLOW.md`**.
+
 ## Prerequisites
 
 - **Root privileges** are required (raw ICMP sockets):

@@ -23,4 +23,4 @@ Each page covers:
 2. **How it works** — packet layout and typical network behavior
 3. **In ft_ping** — flags, source files, and what you see in output
 
-For program structure and module map, see [ARCHITECTURE.md](../ARCHITECTURE.md). For CLI flags, see [FLAGS.md](../FLAGS.md). For RFC standards, see [rfc/](../rfc/README.md).
+For program structure and module map, see [ARCHITECTURE.md](../ARCHITECTURE.md). For CLI flags, see [FLAGS.md](../FLAGS.md). For per-command execution flow, see [COMMAND_FLOW.md](../COMMAND_FLOW.md). For RFC standards, see [rfc/](../rfc/README.md).
