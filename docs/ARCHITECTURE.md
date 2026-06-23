@@ -341,6 +341,8 @@ Filtering: Echo Reply only when `id == ping->ident`; foreign ICMP Echo Requests 
 
 ### `signal.c`
 
+See **[SIGNALS.md](concepts/SIGNALS.md)** for full source, `sigaction` walkthrough, `g_stop` / `volatile sig_atomic_t`, and `EINTR` in `select`.
+
 | Function | Purpose |
 |----------|---------|
 | `setup_signals` | `sigaction(SIGINT)` → `g_stop = 1` |

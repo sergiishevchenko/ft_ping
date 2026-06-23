@@ -12,6 +12,7 @@ This folder explains the network concepts that matter most for understanding how
 | [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) | ICMP identifier — why `getpid() & 0xFFFF`, filtering replies, collisions |
 | [TTL.md](TTL.md) | Time To Live — hop limit, decrements, “Time to live exceeded” |
 | [TOS.md](TOS.md) | Type of Service — QoS byte in the IP header, `-T` flag |
+| [SIGNALS.md](SIGNALS.md) | SIGINT / Ctrl+C — `setup_signals`, `g_stop`, graceful shutdown |
 
 **RFC standards:** [rfc/README.md](../rfc/README.md) — [791](../rfc/rfc791.txt), [792](../rfc/rfc792.txt), [1071](../rfc/rfc1071.txt), [1122](../rfc/rfc1122.txt).
 
