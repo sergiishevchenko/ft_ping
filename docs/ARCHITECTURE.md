@@ -312,7 +312,7 @@ Order matters: **args and DNS before root**, **socket before setuid**, **signals
 
 | Function | Purpose |
 |----------|---------|
-| `recv_ping` | `recvmsg`, parse IP/ICMP, call `print_echo_reply` or `print_icmp_error` |
+| `recv_ping` | `recvmsg`, parse IP/ICMP, call `print_echo_reply` or `print_icmp_error` — see [RECV.md](concepts/RECV.md) |
 
 Filtering: Echo Reply only when `id == ping->ident`; foreign ICMP Echo Requests are ignored; other ICMP types → errors.
 

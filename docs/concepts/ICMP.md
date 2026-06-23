@@ -335,15 +335,17 @@ If `-s 0` (zero data bytes), there is no room for a timestamp and the reply line
 
 ### Matching logic in `recv_ping()`
 
+See **[RECV.md](RECV.md)** for full source, every variable type, constants, `recvmsg` setup, and the complete dispatch table.
+
 After reading a packet:
 
 ```
 if type == ECHOREPLY (0) and id == ping->ident:
     → success: print_echo_reply()
-else if type == ECHO (8):
-    → ignore (someone else's ping to us)
+else if type != ECHO (8):
+    → ICMP error path: print_icmp_error()  (may filter or ignore)
 else:
-    → ICMP error path: print_icmp_error()
+    → ignore (incoming Echo Request — someone else's ping to us)
 ```
 
 This is why you never print lines for other users’ pings on the same host: their `id` differs.
