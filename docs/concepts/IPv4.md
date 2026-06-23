@@ -63,13 +63,66 @@ All multi-byte integers on the wire are **big-endian** (network byte order).
 | 16–19 | Destination Address | `ip_dst` | 4 | Receiver IPv4 |
 | 20+ | Options | (after fixed 20 bytes) | 0–40 | Timestamp, record route, etc. |
 
-**Header length in bytes:**
+Minimum `ip_hl` is **5** → 5 × 4 = **20 bytes**. Maximum with options is **15** → **60 bytes**. See [IHL and 32-bit words](#ihl-and-32-bit-words) for what those five words contain.
+
+---
+
+## IHL and 32-bit words
+
+RFC 791 measures IP header length in **32-bit words** (4 bytes each), not in bytes. The **IHL** field in byte 0 stores that count in its lower 4 bits.
+
+`ip_hl` is a small integer (0–15). It is **not** a byte offset and **not** a pointer. For a normal echo reply it is simply **5** — meaning “the IP header is five consecutive 4-byte blocks in `buf`.”
+
+### Byte 0: version and IHL together
+
+```
+buf[0] = 0x45
+
+        7 6 5 4 | 3 2 1 0
+        0 1 0 0   0 1 0 1
+        version 4   ip_hl = 5
+```
+
+After `ip_hdr = (struct ip *)buf`, `ip_hdr->ip_hl` reads as **5**.
+
+### The five words when `ip_hl == 5`
+
+These are not separate packets — they are **one IP header** laid out as five aligned 32-bit chunks:
+
+| Word | Bytes in `buf` | Fields (standard 20-byte header) |
+|------|----------------|----------------------------------|
+| 1 | 0–3 | Version + IHL + TOS + Total Length |
+| 2 | 4–7 | Identification + Flags + Fragment Offset |
+| 3 | 8–11 | TTL + Protocol + Header Checksum |
+| 4 | 12–15 | Source Address |
+| 5 | 16–19 | Destination Address |
+
+ICMP starts at `buf[20]`, immediately after word 5:
+
+```
+buf:  [ word 1 ][ word 2 ][ word 3 ][ word 4 ][ word 5 ][ ICMP ... ]
+       0    3    4    7    8   11   12  15   16  19   20
+```
+
+### Converting words to bytes (`<< 2`)
+
+Code needs a **byte** offset to advance a pointer past the IP header:
 
 ```c
 ip_hdr_len = ip_hdr->ip_hl << 2;   /* recv.c, print.c */
+icmp_hdr = (t_icmphdr *)(buf + ip_hdr_len);
 ```
 
-Minimum `ip_hl` is **5** → 5 × 4 = **20 bytes**. Maximum with options is **15** → **60 bytes**.
+| Stage | Value | Unit |
+|-------|-------|------|
+| `ip_hl` before shift | 5 | 32-bit words |
+| `ip_hdr_len` after `<< 2` | 20 | bytes |
+
+`<< 2` is multiply by 4: one word = 4 bytes. Without it, `buf + 5` would land on **byte 5 inside the IP header**, not at the start of ICMP.
+
+### When `ip_hl > 5`
+
+Each extra word adds 4 bytes of **IP options** after the fixed 20-byte base. Example: `ip_hl == 6` → 24 bytes total; ICMP at `buf + 24`. Always use `ip_hl << 2` — never hard-code `20`.
 
 ---
 
@@ -86,7 +139,7 @@ Printed in verbose dumps as `Vr` (version): `print_ip_header_dump()` uses `ip_hd
 
 ## IHL — Internet Header Length (4 bits)
 
-Number of **32-bit words** in the IP header, including options.
+Number of **32-bit words** in the IP header, including options. Full breakdown of what each word contains: [IHL and 32-bit words](#ihl-and-32-bit-words).
 
 | IHL | Header size |
 |-----|-------------|

@@ -181,7 +181,252 @@ Socket receive timeout is set in `socket.c`: `SO_RCVTIMEO` = 1 second. `ping_loo
 
 ---
 
-## `struct msghdr` and `recvmsg` setup (lines 14–21)
+## Receive buffers: `buf`, `from`, `iovec`, `msghdr`
+
+`recv_ping` does not call plain `recv()`. It uses **`recvmsg()`**, which needs two kinds of output from the kernel in one syscall:
+
+1. **Packet bytes** → written into `buf` (described by `struct iovec`)
+2. **Sender IPv4 address** → written into `from` (described by `msg.msg_name` inside `struct msghdr`)
+
+### `uint8_t buf[RECV_BUFSIZE]`
+
+A **byte array** on the stack — the raw datagram as it arrived on the wire (IP + ICMP + payload).
+
+- `uint8_t` = one unsigned byte (0–255), exactly one octet of the packet.
+- `RECV_BUFSIZE` = `65536` = max IPv4 datagram size.
+
+`buf` holds the **contents** of the packet. It does **not** tell you who sent it — that is `from`.
+
+### `struct sockaddr_in from`
+
+Filled by the kernel when the packet arrives. Holds the **source IPv4 address** (and port field, unused for ICMP).
+
+Used when printing:
+
+```
+64 bytes from 127.0.0.1: icmp_seq=0 ...
+              ↑
+         from.sin_addr
+```
+
+---
+
+### `struct iovec` — name, layout, why it exists
+
+**Name:** **io** (input/output) + **vec** (vector) — one entry in a list of `{pointer, length}` pairs telling the kernel **where to put incoming data**.
+
+**Definition** (`<sys/socket.h>`):
+
+```c
+struct iovec {
+    void  *iov_base;   /* start of buffer */
+    size_t iov_len;    /* max bytes to write there */
+};
+```
+
+| Field | In `recv_ping` | Meaning |
+|-------|----------------|---------|
+| `iov_base` | `buf` | “Write packet bytes starting here.” |
+| `iov_len` | `sizeof(buf)` (= 65536) | “Do not write more than this many bytes.” |
+
+`iovec` does **not** store the packet. It only **points at** `buf` and gives its size. Think of it as one line on a form: *put the parcel contents in this box, max 65536 bytes.*
+
+**Why not pass `buf` directly to `recvmsg`?** The POSIX API is built for **scatter/gather**: one syscall can fill **several** memory regions. `ft_ping` uses only **one** region (`msg_iovlen = 1`), but the API shape is the same.
+
+**Example with two buffers** (not used in `ft_ping`, but shows the name “vector”):
+
+```c
+uint8_t ip_part[60];
+uint8_t icmp_part[4096];
+struct iovec iov[2];
+
+iov[0].iov_base = ip_part;
+iov[0].iov_len  = sizeof(ip_part);
+iov[1].iov_base = icmp_part;
+iov[1].iov_len  = sizeof(icmp_part);
+
+msg.msg_iov    = iov;
+msg.msg_iovlen = 2;   /* kernel may split data across both */
+```
+
+`ft_ping` keeps it simple: one `buf`, one `iovec`.
+
+---
+
+### `struct msghdr` — name, layout, why it exists
+
+**Name:** **msg** (message) + **hdr** (header) — a **control block** describing one receive operation for `recvmsg(2)`. It is **not** part of the packet on the wire; it is a form you fill in before calling the kernel.
+
+**Plain idea:** `msghdr` answers two questions for the kernel in one syscall:
+
+1. **Where do I put the packet bytes?** → via `msg_iov` → `iovec` → `buf`
+2. **Where do I put the sender’s address?** → via `msg_name` → `from`
+
+`msghdr` itself stores **no packet data** and **no IP address** — only pointers and sizes.
+
+#### Layout (fields used in `recv_ping`)
+
+```c
+struct msghdr {
+    void         *msg_name;       /* buffer for source address */
+    socklen_t     msg_namelen;    /* size of that buffer (in/out) */
+    struct iovec *msg_iov;        /* array of {pointer, length} for data */
+    size_t        msg_iovlen;     /* number of iovec entries */
+    /* msg_control, msg_flags, … — not used in ft_ping */
+};
+```
+
+| Field | Set to in `recv_ping` | Role |
+|-------|----------------------|------|
+| `msg_name` | `&from` | Kernel writes **who sent** the datagram (`sockaddr_in`) |
+| `msg_namelen` | `sizeof(from)` | Input: max size of `from`; output: actual size written |
+| `msg_iov` | `&iov` | Points at one `iovec` that describes `buf` |
+| `msg_iovlen` | `1` | Only one data buffer (unlike multi-buffer scatter/gather) |
+
+#### How `recvmsg` uses `msg`
+
+```c
+bytes = recvmsg(ping->sockfd, &msg, 0);
+```
+
+The kernel reads your `msg`, receives one datagram from `sockfd`, then:
+
+- fills **`from`** through `msg_name` (source IPv4 for `bytes from …`)
+- fills **`buf`** through `msg_iov[0]` (raw bytes: IP + ICMP + payload)
+
+Return value `bytes` = number of bytes written into `buf` (not including `from`).
+
+#### Diagram: what points where
+
+```
+              struct msghdr msg
+              ┌─────────────────────────────┐
+              │ msg_name    ──────► &from    │  → 127.0.0.1 (sender)
+              │ msg_namelen = sizeof(from)   │
+              │ msg_iov     ──────► &iov     │
+              │ msg_iovlen  = 1              │
+              └─────────────────────────────┘
+                                    │
+                                    ▼
+                            struct iovec iov
+                            ┌──────────────────┐
+                            │ iov_base ──► buf │  → packet bytes
+                            │ iov_len  = 65536 │
+                            └──────────────────┘
+```
+
+**Who / what:**
+
+| Variable | Holds | Used for |
+|----------|-------|----------|
+| `from` | Sender IP | `64 bytes from **127.0.0.1**: …` |
+| `buf` | Packet body | Parse IP header, ICMP, compute RTT |
+
+#### Why not plain `recv()`?
+
+```c
+recv(sockfd, buf, len, 0);   /* only gives you buf — no sender address */
+```
+
+`ft_ping` prints the source IP on every reply line. `print_echo_reply()` reads:
+
+```c
+inet_ntoa(((struct sockaddr_in *)msg->msg_name)->sin_addr);
+```
+
+That requires `recvmsg` + `msghdr` + `msg_name` → `from`. You cannot get `from` from `buf` alone for display (you could parse the IP header’s source field, but the API already gives you `msg_name`).
+
+#### `msghdr` vs `iovec` — division of labour
+
+| Structure | Job |
+|-----------|-----|
+| **`iovec`** | One slice: “write **data** here, max N bytes.” |
+| **`msghdr`** | Whole job: “write **data** (via `iovec` list) **and** **sender address** (via `msg_name`).” |
+
+One `iovec` inside one `msghdr` is the minimal setup for `recv_ping`.
+
+#### Setup in code (lines 14–20)
+
+```c
+memset(&msg, 0, sizeof(msg));   /* clear unused msghdr fields */
+
+msg.msg_name    = &from;
+msg.msg_namelen = sizeof(from);
+
+msg.msg_iov     = &iov;          /* iov must already point at buf */
+msg.msg_iovlen  = 1;
+```
+
+`memset` on `msg` is important: fields like `msg_control` stay NULL so the kernel does not write ancillary data.
+
+#### After a successful call (example)
+
+Ping reply from loopback, 84 bytes in `buf`:
+
+```
+msg.msg_name  →  from.sin_addr = 127.0.0.1
+msg.msg_iov   →  buf[0..83]    = [ IP 20B | ICMP 8B | data 56B ]
+bytes         =  84
+```
+
+`msg` is stack-local and reused on the next `recv_ping` call; only `buf` and `from` contents change.
+
+---
+
+### How the four pieces connect (`recv_ping` example)
+
+**Before `recvmsg`:**
+
+```
+buf[65536]     ← empty byte array (packet will land here)
+from           ← uninitialized sockaddr_in
+
+iov.iov_base ──────────► buf[0]
+iov.iov_len  = 65536
+
+msg.msg_name    ───────► &from
+msg.msg_namelen = sizeof(from)
+msg.msg_iov     ───────► &iov
+msg.msg_iovlen  = 1
+```
+
+**After `recvmsg` returns 84** (example: 20-byte IP + 8-byte ICMP + 56-byte data):
+
+```
+buf[0 … 83]    ← 84 bytes of packet (IP + ICMP + payload)
+from.sin_addr  ← e.g. 127.0.0.1 (who replied)
+
+bytes = 84
+```
+
+**Memory sketch:**
+
+```
+from                          buf
+┌─────────────────┐          ┌────┬────┬────────────┐
+│ sin_addr:       │          │ IP │ICMP│ payload    │
+│  127.0.0.1      │          │20 B│ 8B │ 56 B       │
+└─────────────────┘          └────┴────┴────────────┘
+     ▲                              ▲
+     │                              │
+ msg.msg_name                   iov.iov_base
+ (who sent)                     (what they sent)
+```
+
+---
+
+### `recv()` vs `recvmsg()` — why `ft_ping` uses the latter
+
+| Call | Gets packet bytes | Gets sender address | Needs `iovec` |
+|------|-------------------|---------------------|---------------|
+| `recv(sockfd, buf, len, 0)` | yes | no (not in one call) | no |
+| `recvmsg(sockfd, &msg, 0)` | yes (via `msg_iov`) | yes (via `msg_name`) | yes |
+
+`print_echo_reply` uses `msg->msg_name` for the `bytes from …` line, so `recvmsg` + `from` + `iovec` + `buf` are required together.
+
+---
+
+### Setup code in `recv_ping` (lines 14–21)
 
 ```c
 memset(&msg, 0, sizeof(msg));
@@ -194,17 +439,15 @@ msg.msg_iovlen = 1;
 bytes = recvmsg(ping->sockfd, &msg, 0);
 ```
 
-| Field | Value | Effect |
-|-------|-------|--------|
-| `iov.iov_base` | `buf` | Packet bytes written here |
-| `iov.iov_len` | `65536` | Max bytes to accept |
-| `msg.msg_name` | `&from` | Kernel fills sender’s `sockaddr_in` |
-| `msg.msg_namelen` | `sizeof(from)` | In/out length of address buffer |
-| `msg.msg_iov` | `&iov` | Array of one iovec |
-| `msg.msg_iovlen` | `1` | One buffer segment |
-| flags | `0` | No `MSG_DONTWAIT` — blocking read |
+| Line | What it does |
+|------|----------------|
+| `memset(&msg, 0, …)` | Clear `msghdr`; unused fields default to zero |
+| `iov.iov_base / iov_len` | “Data goes into `buf`, max 65536 bytes” |
+| `msg.msg_name / msg_namelen` | “Sender address goes into `from`” |
+| `msg.msg_iov / msg_iovlen` | “One `iovec` entry: `&iov`” |
+| `recvmsg(…, 0)` | Block until one datagram (or error / timeout) |
 
-**Why `recvmsg` instead of `recv`:** you get both the datagram **and** the source address in one syscall (`msg_name`).
+Flags `0` = normal blocking read (no `MSG_DONTWAIT`).
 
 ---
 
