@@ -52,9 +52,11 @@ if [ "$(id -u)" -ne 0 ]; then
 	exit 1
 fi
 
+REAL_USER="${SUDO_USER:-$(whoami)}"
+
 if [ ! -x "$PING" ]; then
 	echo "Building..."
-	make -s re || { echo "Build failed"; exit 1; }
+	sudo -u "$REAL_USER" make -s re || { echo "Build failed"; exit 1; }
 fi
 
 if [ ! -x "$PING" ]; then
@@ -75,20 +77,20 @@ fi
 
 # --- Makefile ---
 header "MANDATORY: Makefile"
-make -s re 2>/dev/null && ok "make re" || ko "make re failed"
-make -s clean 2>/dev/null
+sudo -u "$REAL_USER" make -s re 2>/dev/null && ok "make re" || ko "make re failed"
+sudo -u "$REAL_USER" make -s clean 2>/dev/null
 if [ -f "$PING" ]; then
 	ok "make clean keeps binary"
 else
 	ko "make clean removed binary"
 fi
-make -s fclean 2>/dev/null
+sudo -u "$REAL_USER" make -s fclean 2>/dev/null
 if [ ! -f "$PING" ]; then
 	ok "make fclean removes binary"
 else
 	ko "make fclean did not remove binary"
 fi
-make -s 2>/dev/null && ok "make (rebuild)" || ko "make failed"
+sudo -u "$REAL_USER" make -s 2>/dev/null && ok "make (rebuild)" || ko "make failed"
 
 # --- Help ---
 header "MANDATORY: -? / help"
