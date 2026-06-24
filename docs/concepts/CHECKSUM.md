@@ -341,6 +341,334 @@ Fold 2:  0x0000 + 0xB814 = 0xB814
 
 ---
 
+## Line-by-line walkthrough with a second example
+
+A different packet that covers the **odd-byte branch** (`if (len == 1)`). ICMP Echo Request: type = 8, code = 0, id = `0xC0DE`, seq = `0x0003`, payload = `AA BB CC` (3 bytes). Total **11 bytes** (odd length).
+
+```
+Addr:   0x00  0x01  0x02  0x03  0x04  0x05  0x06  0x07  0x08  0x09  0x0A
+Hex:      08    00    00    00    C0    DE    00    03    AA    BB    CC
+          type  code  cksum(=0)  id          seq         payload (3 bytes)
+```
+
+### Hex notation primer
+
+Every hex digit maps to exactly 4 bits. For example, `0x0001_9E3E`:
+
+```
+Hex digit:  0    0    0    1  _  9    E    3    E
+            │    │    │    │     │    │    │    │
+Binary:   0000 0000 0000 0001  1001 1110 0011 1110
+          ──── upper 16 bits── ──── lower 16 bits──
+                 = 0x0001            = 0x9E3E
+                 (carry)             (sum)
+```
+
+The `_` is a visual separator — `0x0001_9E3E` = `0x00019E3E`. It makes the carry/sum split obvious at a glance.
+
+### Line 5: `uint16_t *ptr;`
+
+Declares a pointer to a 16-bit word. The **type** of the pointer controls two things:
+- `*ptr` (dereference) reads `sizeof(uint16_t)` = **2 bytes** from memory.
+- `ptr++` (increment) advances the address by `sizeof(uint16_t)` = **2 bytes**.
+
+```
+ptr = ???  (uninitialized)
+```
+
+### Line 6: `uint32_t sum;`
+
+A 32-bit accumulator. Uninitialized.
+
+### Line 8: `ptr = (uint16_t *)data;`
+
+The `void *data` pointer (pointing at the start of our 11-byte packet) is cast to `uint16_t *`. From now on, each `*ptr` reads 2 bytes at a time.
+
+```
+ptr → address 0x00 (first byte of packet: 0x08)
+len = 11  (function argument, unchanged)
+```
+
+### Line 9: `sum = 0;`
+
+```
+sum = 0x0000_0000
+      binary:  0000 0000 0000 0000 0000 0000 0000 0000
+      decimal: 0
+```
+
+### Lines 10–14: `while (len > 1)` loop
+
+The loop runs while at least 2 bytes remain.
+
+#### Iteration 1: `len = 11 > 1` → true
+
+**Line 12: `sum += *ptr++;`**
+
+`*ptr` reads 2 bytes at address 0x00: bytes `[08, 00]`. On little-endian (x86/ARM), the lower address is the **least-significant** byte:
+
+```
+Memory:     08        00
+            LSB       MSB        (little-endian: LSB at lower address)
+uint16_t:   0x0008
+binary:     0000 0000 0000 1000
+decimal:    8
+```
+
+After add, `ptr` advances by 2 bytes:
+
+```
+sum = 0x0000_0000 + 0x0000_0008 = 0x0000_0008
+      binary:  0000 0000 0000 0000 0000 0000 0000 1000
+      decimal: 8
+ptr → address 0x02
+```
+
+**Line 13: `len -= 2;`** → `len = 11 − 2 = 9`
+
+#### Iteration 2: `len = 9 > 1` → true
+
+**Line 12: `sum += *ptr++;`**
+
+Bytes `[00, 00]` (checksum field, zeroed):
+
+```
+uint16_t: 0x0000    binary: 0000 0000 0000 0000    decimal: 0
+```
+
+```
+sum = 0x0000_0008 + 0x0000_0000 = 0x0000_0008
+      binary:  0000 0000 0000 0000 0000 0000 0000 1000
+      decimal: 8
+ptr → address 0x04
+len = 9 − 2 = 7
+```
+
+#### Iteration 3: `len = 7 > 1` → true
+
+**Line 12: `sum += *ptr++;`**
+
+Bytes `[C0, DE]` (id field, `0xC0DE` on the wire):
+
+```
+Memory:     C0        DE
+            LSB       MSB        (little-endian)
+uint16_t:   0xDEC0
+binary:     1101 1110 1100 0000
+decimal:    57024
+```
+
+```
+sum = 0x0000_0008 + 0x0000_DEC0 = 0x0000_DEC8
+      binary:  0000 0000 0000 0000 1101 1110 1100 1000
+      decimal: 57032
+ptr → address 0x06
+len = 7 − 2 = 5
+```
+
+#### Iteration 4: `len = 5 > 1` → true
+
+**Line 12: `sum += *ptr++;`**
+
+Bytes `[00, 03]` (seq field, `0x0003` on the wire):
+
+```
+Memory:     00        03
+uint16_t:   0x0300
+binary:     0000 0011 0000 0000
+decimal:    768
+```
+
+```
+sum = 0x0000_DEC8 + 0x0000_0300 = 0x0000_E1C8
+      binary:  0000 0000 0000 0000 1110 0001 1100 1000
+      decimal: 57800
+ptr → address 0x08
+len = 5 − 2 = 3
+```
+
+#### Iteration 5: `len = 3 > 1` → true
+
+**Line 12: `sum += *ptr++;`**
+
+Bytes `[AA, BB]` (first two payload bytes):
+
+```
+Memory:     AA        BB
+uint16_t:   0xBBAA
+binary:     1011 1011 1010 1010
+decimal:    48042
+```
+
+```
+sum = 0x0000_E1C8 + 0x0000_BBAA = 0x0001_9D72
+      binary:  0000 0000 0000 0001 1001 1101 0111 0010
+      decimal: 105842               ↑
+                               bit 16 is set — CARRY!
+ptr → address 0x0A
+len = 3 − 2 = 1
+```
+
+#### Loop check: `len = 1 > 1` → false — exit loop
+
+### Line 15: `if (len == 1)` → true
+
+One byte remains (packet length was odd: 11 bytes). Enter the branch.
+
+### Line 16: `sum += *(uint8_t *)ptr;`
+
+`ptr` now points at address 0x0A — the last byte `0xCC`. Cast to `uint8_t *`, read 1 byte:
+
+```
+Memory:     CC
+uint8_t:    0xCC
+binary:     1100 1100
+decimal:    204
+```
+
+The 8-bit value is promoted to 32 bits when added to `sum`:
+
+```
+0xCC → 0x0000_00CC
+       binary:  0000 0000 0000 0000 0000 0000 1100 1100
+       decimal: 204
+
+sum = 0x0001_9D72 + 0x0000_00CC = 0x0001_9E3E
+      binary:  0000 0000 0000 0001 1001 1110 0011 1110
+      decimal: 106046
+```
+
+### Line 17: `sum = (sum >> 16) + (sum & 0xFFFF);` — first fold
+
+Split the 32-bit `sum` into upper and lower halves.
+
+**`sum >> 16`** — shift right by 16 bits (extract carry):
+
+```
+sum      = 0000 0000 0000 0001 | 1001 1110 0011 1110
+                                 ↓ shift everything right by 16
+sum >> 16= 0000 0000 0000 0000 | 0000 0000 0000 0001 = 0x0001
+           decimal: 1
+```
+
+**`sum & 0xFFFF`** — mask, keep only lower 16 bits:
+
+```
+sum      = 0000 0000 0000 0001 1001 1110 0011 1110
+0xFFFF   = 0000 0000 0000 0000 1111 1111 1111 1111
+           ──────────────────────────────────────────  AND
+result   = 0000 0000 0000 0000 1001 1110 0011 1110 = 0x9E3E
+           decimal: 40510
+```
+
+Add them:
+
+```
+    0000 0000 0000 0001    0x0001   (carry = 1)     decimal: 1
+  + 1001 1110 0011 1110    0x9E3E   (lower 16 bits) decimal: 40510
+  ─────────────────────
+    1001 1110 0011 1111    0x9E3F                    decimal: 40511
+
+bit 16 = 0 → no new carry
+```
+
+```
+sum = 0x0000_9E3F
+      binary:  0000 0000 0000 0000 1001 1110 0011 1111
+      decimal: 40511
+```
+
+### Line 18: `sum += (sum >> 16);` — second fold
+
+```
+sum >> 16 = 0x0000_9E3F >> 16 = 0x0000_0000
+            binary:  0000 0000 0000 0000 0000 0000 0000 0000
+            decimal: 0
+
+sum = 0x0000_9E3F + 0x0000_0000 = 0x0000_9E3F   (unchanged — no carry existed)
+      decimal: 40511
+```
+
+### Line 19: `return ((uint16_t)~sum);` — bitwise complement
+
+`~sum` inverts all 32 bits, then `(uint16_t)` truncates to the lower 16:
+
+**`~sum` (32-bit inversion):**
+
+```
+sum  = 0000 0000 0000 0000 1001 1110 0011 1111
+~sum = 1111 1111 1111 1111 0110 0001 1100 0000
+```
+
+**`(uint16_t)~sum` — keep only lower 16 bits:**
+
+```
+Position:  15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0
+           ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───
+sum:        1   0   0   1   1   1   1   0   0   0   1   1   1   1   1   1
+~sum:       0   1   1   0   0   0   0   1   1   1   0   0   0   0   0   0
+
+0110 0001 1100 0000 = 0x61C0
+decimal: 25024
+```
+
+**Return value: `0x61C0`** (decimal 25024). This checksum is written into the ICMP header.
+
+### Variable state summary
+
+```
+Line   │ Action                           │ ptr    │ len │ sum (hex)    │ sum (dec) │ sum (binary, 32 bits)
+───────┼──────────────────────────────────-┼────────┼─────┼──────────────┼───────────┼──────────────────────────────────
+  8    │ ptr = (uint16_t *)data            │ →0x00  │  11 │ ???          │ ???       │ ???
+  9    │ sum = 0                           │ →0x00  │  11 │ 0x0000_0000  │ 0         │ 00000000 00000000 00000000 00000000
+ 12(1) │ sum += [08,00] = 0x0008; ptr++    │ →0x02  │  11 │ 0x0000_0008  │ 8         │ 00000000 00000000 00000000 00001000
+ 13(1) │ len -= 2                          │ →0x02  │   9 │     —        │     —     │ (unchanged)
+ 12(2) │ sum += [00,00] = 0x0000; ptr++    │ →0x04  │   9 │ 0x0000_0008  │ 8         │ 00000000 00000000 00000000 00001000
+ 13(2) │ len -= 2                          │ →0x04  │   7 │     —        │     —     │ (unchanged)
+ 12(3) │ sum += [C0,DE] = 0xDEC0; ptr++    │ →0x06  │   7 │ 0x0000_DEC8  │ 57032     │ 00000000 00000000 11011110 11001000
+ 13(3) │ len -= 2                          │ →0x06  │   5 │     —        │     —     │ (unchanged)
+ 12(4) │ sum += [00,03] = 0x0300; ptr++    │ →0x08  │   5 │ 0x0000_E1C8  │ 57800     │ 00000000 00000000 11100001 11001000
+ 13(4) │ len -= 2                          │ →0x08  │   3 │     —        │     —     │ (unchanged)
+ 12(5) │ sum += [AA,BB] = 0xBBAA; ptr++    │ →0x0A  │   3 │ 0x0001_9D72  │ 105842    │ 00000000 00000001 10011101 01110010
+ 13(5) │ len -= 2                          │ →0x0A  │   1 │     —        │     —     │ (unchanged)  ↑ bit 16 = carry
+  16   │ sum += [CC] = 0xCC (odd byte)     │ →0x0A  │   1 │ 0x0001_9E3E  │ 106046    │ 00000000 00000001 10011110 00111110
+  17   │ fold 1: (>>16) + (&0xFFFF)        │   —    │   — │ 0x0000_9E3F  │ 40511     │ 00000000 00000000 10011110 00111111
+  18   │ fold 2: sum += (sum >> 16)        │   —    │   — │ 0x0000_9E3F  │ 40511     │ 00000000 00000000 10011110 00111111
+  19   │ return (uint16_t)~sum             │   —    │   — │ 0x61C0       │ 25024     │                   01100001 11000000
+```
+
+### Verification (receiver side)
+
+The receiver gets the packet with checksum `0x61C0` stored as `uint16_t` in bytes 02–03. On a little-endian machine, `uint16_t` value `0x61C0` is stored as byte `0xC0` at address 02 (LSB) and byte `0x61` at address 03 (MSB):
+
+```
+Memory: 08 00 C0 61 C0 DE 00 03 AA BB CC
+
+Words (little-endian uint16_t reads):
+  W0: [08, 00] = 0x0008
+  W1: [C0, 61] = 0x61C0   ← checksum
+  W2: [C0, DE] = 0xDEC0
+  W3: [00, 03] = 0x0300
+  W4: [AA, BB] = 0xBBAA
+  odd byte: CC = 0x00CC
+```
+
+```
+  0x0008
++ 0x61C0 = 0x0000_61C8
++ 0xDEC0 = 0x0001_4088   ← carry
++ 0x0300 = 0x0001_4388
++ 0xBBAA = 0x0001_FF32   ← carry
++ 0x00CC = 0x0001_FFFE
+
+Fold 1:  0x0001 + 0xFFFE = 0xFFFF
+Fold 2:  0x0000 + 0xFFFF = 0xFFFF
+
+~0xFFFF = 0x0000  ✓   Packet is intact!
+```
+
+---
+
 ## Why one's complement?
 
 | Property | Benefit |
