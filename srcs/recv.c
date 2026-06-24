@@ -1,5 +1,10 @@
 #include "ft_ping.h"
 
+static bool	icmp_checksum_valid(t_icmphdr *hdr, size_t len)
+{
+	return (checksum(hdr, len) == 0);
+}
+
 int	recv_ping(t_ping *ping)
 {
 	uint8_t				buf[RECV_BUFSIZE];
@@ -10,6 +15,7 @@ int	recv_ping(t_ping *ping)
 	struct ip			*ip_hdr;
 	t_icmphdr			*icmp_hdr;
 	int					ip_hdr_len;
+	size_t				icmp_len;
 
 	memset(&msg, 0, sizeof(msg));
 	iov.iov_base = buf;
@@ -31,6 +37,9 @@ int	recv_ping(t_ping *ping)
 	if (bytes < ip_hdr_len + PING_PKT_HDR_SZ)
 		return (0);
 	icmp_hdr = (t_icmphdr *)(buf + ip_hdr_len);
+	icmp_len = (size_t)bytes - (size_t)ip_hdr_len;
+	if (!icmp_checksum_valid(icmp_hdr, icmp_len))
+		return (0);
 	if (ICMP_HDR_TYPE(icmp_hdr) == ICMP_ECHOREPLY
 		&& ntohs(ICMP_HDR_ID(icmp_hdr)) == ping->ident)
 	{
