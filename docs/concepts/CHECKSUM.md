@@ -246,6 +246,14 @@ sum:        1   0   1   1   0   1   1   1   1   1   0   1   0   0   1   0
 
 **Result: `0x482D`** — this is the checksum written into the ICMP header before sending.
 
+#### Why invert (`~`)?
+
+The `~` is not byte swapping — it flips **every bit** (`0→1`, `1→0`). It is the final step of the **one's complement** algorithm (RFC 1071), not an optional trick.
+
+After summing all words (with the checksum field zeroed) and folding carries, you get a 16-bit value `sum`. The checksum stored in the packet is `~sum`. The receiver then runs the **same function** over the entire message **including** that checksum field. If the data is intact, the folded sum is always `0xFFFF`, and `~0xFFFF = 0x0000` — a clean pass/fail test.
+
+See [Why inversion (~)?](#why-inversion-) for a concrete numeric walkthrough using `sum = 0x9E3F` → checksum `0x61C0`.
+
 ---
 
 ### Step 5 — Verification (receiver side)
@@ -614,6 +622,8 @@ decimal: 25024
 
 **Return value: `0x61C0`** (decimal 25024). This checksum is written into the ICMP header.
 
+When the receiver sums all words **including** this checksum, the folded result is `0xFFFF`, and `~0xFFFF = 0x0000` — proof the packet is intact. See [Why inversion (~)?](#why-inversion-) for the full `0x9E3F + 0x61C0 = 0xFFFF` walkthrough.
+
 ### Variable state summary
 
 ```
@@ -666,6 +676,109 @@ Fold 2:  0x0000 + 0xFFFF = 0xFFFF
 
 ~0xFFFF = 0x0000  ✓   Packet is intact!
 ```
+
+---
+
+## Why inversion (~)?
+
+Inversion is the `~` operator on the last line of `checksum()`:
+
+```c
+return ((uint16_t)~sum);
+```
+
+It flips every bit of the folded 16-bit sum — **not** the byte order. This is what makes the algorithm a **one's complement checksum**: the value written into the packet is chosen so that, together with the data, the receiver's sum collapses to a known constant.
+
+### Sender side
+
+Suppose that after summing all 16-bit words (with the checksum field set to zero) and folding carries, you get:
+
+```
+sum = 0x9E3F
+      binary:  1001 1110 0011 1111
+      decimal: 40511
+```
+
+Invert every bit:
+
+```
+~sum = 0x61C0   ← written into the ICMP checksum field
+       binary:  0110 0001 1100 0000
+       decimal: 25024
+```
+
+Bit-by-bit:
+
+```
+Position:  15  14  13  12  11  10   9   8   7   6   5   4   3   2   1   0
+           ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ─── ───
+sum:        1   0   0   1   1   1   1   0   0   0   1   1   1   1   1   1
+~sum:       0   1   1   0   0   0   0   1   1   1   0   0   0   0   0   0
+```
+
+This value (`0x61C0`) is exactly what the [line-by-line walkthrough](#line-19-return-uint16_tsum--bitwise-complement) produces for the 11-byte odd-length example.
+
+### Receiver side
+
+The receiver does **not** zero the checksum field. It sums **all** words, including the checksum that was just written in:
+
+```
+sum_of_all_words + checksum
+= 0x9E3F + 0x61C0
+= 0xFFFF
+```
+
+In binary:
+
+```
+  1001 1110 0011 1111    0x9E3F
++ 0110 0001 1100 0000    0x61C0
+─────────────────────
+ 1111 1111 1111 1111    0xFFFF
+```
+
+Then the same function inverts the result:
+
+```
+~0xFFFF = 0x0000   ✓   packet is intact
+```
+
+So the checksum is **chosen** so that data + checksum always produce the "perfect" one's complement sum `0xFFFF`. Any bit corruption during transit breaks this balance → the folded sum is no longer `0xFFFF` → `~sum ≠ 0x0000` → packet discarded.
+
+### What the receiver actually checks
+
+The receiver does not compare "my sum == your checksum". It runs one test:
+
+```
+checksum(entire_packet_including_checksum_field) == 0x0000 ?
+```
+
+| Folded sum before `~` | After `~` | Meaning |
+|-----------------------|-----------|---------|
+| `0xFFFF` | `0x0000` | Packet intact |
+| anything else | non-zero | Packet corrupted → discard |
+
+### Why not store `sum` directly?
+
+| Approach | Problem |
+|----------|---------|
+| Store raw `sum` | Receiver must know to subtract or compare separately — two different code paths |
+| Store `~sum` (RFC 1071) | One function, one test: result == 0 means OK |
+| Skip `~` | Not an Internet Checksum — verification math breaks |
+
+In one's complement arithmetic, `0x0000` and `0xFFFF` both represent zero. The `~` step also ensures the transmitted checksum is rarely all-zeros, which would be ambiguous with "checksum not computed".
+
+### Not byte swapping
+
+Inversion (`~`) and endianness are unrelated:
+
+| Operation | What it does |
+|-----------|--------------|
+| `~sum` | Flips bits: `0x9E3F` → `0x61C0` |
+| Little-endian storage | Stores `0x61C0` as bytes `[C0, 61]` in memory |
+| `htons` / `ntohs` | Swaps byte order for network wire format |
+
+The checksum algorithm reads raw memory; endianness affects which numeric value each `uint16_t` word contributes, but the final complemented checksum still verifies to 0 on any architecture (RFC 1071 Appendix B).
 
 ---
 
