@@ -4,7 +4,7 @@ A **socket** is the operating-system endpoint your program uses to talk to the n
 
 `ft_ping` uses one **raw ICMP socket** for the whole session. All of that setup lives in `srcs/socket.c`. Sending and receiving on the same fd happen in `send.c`, `recv.c`, and `main.c` (`ping_loop`).
 
-Related: [ICMP.md](ICMP.md), [IPv4.md](IPv4.md), [TTL.md](TTL.md), [TOS.md](TOS.md), [RECV.md](RECV.md), [FLAGS.md](../FLAGS.md).
+Related: [ICMP.md](ICMP.md), [IPv4.md](IPv4.md), [ROUTING.md](ROUTING.md), [TTL.md](TTL.md), [TOS.md](TOS.md), [RECV.md](RECV.md), [FLAGS.md](../FLAGS.md).
 
 ---
 

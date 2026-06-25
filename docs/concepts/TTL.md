@@ -2,7 +2,7 @@
 
 TTL is a field in the **IPv4 header**. It limits how many **router hops** a packet may traverse before being discarded. Despite the name “Time To Live”, on modern IPv4 networks TTL is almost always a **hop counter**, not a wall-clock timer.
 
-For all IPv4 header fields, see [IPv4.md](IPv4.md).
+For all IPv4 header fields, see [IPv4.md](IPv4.md). For routing tables, gateways, and how hops relate to forwarding, see [ROUTING.md](ROUTING.md).
 
 ---
 

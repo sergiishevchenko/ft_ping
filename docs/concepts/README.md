@@ -11,6 +11,7 @@ This folder explains the network concepts that matter most for understanding how
 | [ICMP.md](ICMP.md) | Internet Control Message Protocol — echo request/reply (detailed), errors, checksum |
 | [CHECKSUM.md](CHECKSUM.md) | Internet Checksum (RFC 1071) — one's complement algorithm, binary walkthrough, verification |
 | [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) | ICMP identifier — why `getpid() & 0xFFFF`, filtering replies, collisions |
+| [ROUTING.md](ROUTING.md) | Routing table, hops, default gateway, `-r`, path vs TTL |
 | [TTL.md](TTL.md) | Time To Live — hop limit, decrements, “Time to live exceeded” |
 | [TOS.md](TOS.md) | Type of Service — QoS byte in the IP header, `-T` flag |
 | [SIGNALS.md](SIGNALS.md) | SIGINT / Ctrl+C — `setup_signals`, `g_stop`, graceful shutdown |
