@@ -1,264 +1,232 @@
-# Raw sockets and `socket.c`
+# Sockets in `ft_ping`
 
-`socket.c` opens the **raw ICMP socket** and applies kernel-level options before the ping loop runs. Without a successful `create_socket()`, `ft_ping` cannot send or receive probes.
+A **socket** is the operating-system endpoint your program uses to talk to the network. The kernel owns the actual NIC drivers, routing tables, and protocol stacks; your code opens a socket, configures it, then reads and writes through it with system calls (`sendto`, `recvmsg`, `setsockopt`, …).
 
-Related pages: [IPv4.md](IPv4.md) (TTL, TOS, IP options), [TTL.md](TTL.md), [TOS.md](TOS.md), [FLAGS.md](../FLAGS.md) (`--ttl`, `-T`, `-r`, `--ip-timestamp`).
+`ft_ping` uses one **raw ICMP socket** for the whole session. All of that setup lives in `srcs/socket.c`. Sending and receiving on the same fd happen in `send.c`, `recv.c`, and `main.c` (`ping_loop`).
 
----
-
-## Role in the program
-
-```
-main()
-  ├─ parse_args()           # fills ping->ttl, ping->tos, g_dontroute, ip_ts_type, …
-  ├─ create_socket(&ping)   # socket.c — this file
-  ├─ set_ip_timestamp()     # socket.c — only if --ip-timestamp
-  ├─ setuid(getuid())       # drop root; socket stays open
-  └─ ping_loop()            # sendto / recvmsg on ping->sockfd
-```
-
-| Function | Visibility | Called from |
-|----------|------------|-------------|
-| `set_sock_options` | `static` | `create_socket()` only |
-| `set_ip_timestamp` | global | `main()` when `OPT_IPTIMESTAMP` |
-| `create_socket` | global | `main()` after argument parsing |
+Related: [ICMP.md](ICMP.md), [IPv4.md](IPv4.md), [TTL.md](TTL.md), [TOS.md](TOS.md), [RECV.md](RECV.md), [FLAGS.md](../FLAGS.md).
 
 ---
 
-## Full source (`srcs/socket.c`)
+## Normal socket vs raw socket
+
+Most programs use **connected** sockets (TCP) or **datagram** sockets (UDP). The kernel hides IP and transport headers: you send application bytes, you receive application bytes.
+
+`ping` is different. It must build and inspect **ICMP** messages directly. That requires a **raw socket**:
+
+| | TCP/UDP socket | Raw ICMP socket (`ft_ping`) |
+|--|----------------|----------------------------|
+| API | `socket(AF_INET, SOCK_STREAM/DGRAM, …)` | `socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)` |
+| On **send** | You pass payload; kernel adds headers | You pass **ICMP bytes**; kernel adds **IP header** |
+| On **receive** | Payload only | **Full IP datagram** (IP + ICMP) |
+| Privilege | Usually none | **Root** / `CAP_NET_RAW` |
+| Who builds ICMP | Kernel (for normal ping utility internally) | **Your code** in `send_ping()` |
+
+```
+  ft_ping process                         kernel                         network
+  ───────────────                         ──────                         ───────
+
+  send_ping() ──ICMP bytes──► sendto() ──► adds IP hdr ──► route ──► target
+  recv_ping() ◄── IP+ICMP ─── recvmsg() ◄── demux ICMP ◄── replies/errors
+```
+
+The file descriptor is stored in `ping->sockfd` inside `t_ping`. Every probe shares that one socket until `cleanup()` calls `close()`.
+
+---
+
+## Lifecycle in the project
+
+Sockets are created once at startup, used for the whole ping session, then closed on exit.
+
+```
+parse_args()          # fills ping->ttl, ping->tos, flags, destination
+       │
+       ▼
+create_socket()       # socket() + set_sock_options()     ← socket.c
+       │
+       ▼
+set_ip_timestamp()    # only if --ip-timestamp              ← socket.c
+       │
+       ▼
+setuid()              # drop root; fd stays valid
+       │
+       ▼
+ping_loop()           # select → sendto / recvmsg on sockfd
+       │
+       ▼
+cleanup()             # close(sockfd)
+```
+
+**Why open the socket before `setuid`:** creating a raw socket needs root. After `socket()` succeeds, `main()` calls `setuid(getuid())` so the long-running loop does not keep superuser privileges — but the already-open fd remains usable.
+
+**Why options are set in `socket.c`:** TTL, TOS, routing, and IP options are **per-socket** kernel settings. They must be applied before the first `sendto()`, using values parsed from the command line into `t_ping`.
+
+---
+
+## `create_socket()` — opening the socket
 
 ```c
-#include "ft_ping.h"
+ping->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+```
 
-extern int	g_dontroute;
+| Argument | Value | Meaning |
+|--------|-------|---------|
+| `domain` | `AF_INET` | IPv4 only |
+| `type` | `SOCK_RAW` | Application supplies next-layer header (ICMP) |
+| `protocol` | `IPPROTO_ICMP` | Only ICMP traffic is delivered to this socket |
 
-static int	set_sock_options(t_ping *ping)
-{
-	int				one;
-	struct timeval	tv;
+On success, `set_sock_options(ping)` runs. If any option fails, the fd is **closed** and `sockfd` is set to `-1` so the caller does not leak a half-configured socket.
 
-	one = 1;
-	if (setsockopt(ping->sockfd, SOL_SOCKET, SO_BROADCAST,
-			&one, sizeof(one)) < 0)
-	{
-		fprintf(stderr, "ft_ping: setsockopt(SO_BROADCAST): %s\n",
-			strerror(errno));
-		return (-1);
-	}
-	if (setsockopt(ping->sockfd, IPPROTO_IP, IP_TTL,
-			&ping->ttl, sizeof(ping->ttl)) < 0)
-	{
-		fprintf(stderr, "ft_ping: setsockopt(IP_TTL): %s\n",
-			strerror(errno));
-		return (-1);
-	}
-	if (ping->tos >= 0)
-	{
-		if (setsockopt(ping->sockfd, IPPROTO_IP, IP_TOS,
-				&ping->tos, sizeof(ping->tos)) < 0)
-		{
-			fprintf(stderr, "ft_ping: setsockopt(IP_TOS): %s\n",
-				strerror(errno));
-			return (-1);
-		}
-	}
-	if (g_dontroute)
-	{
-		one = 1;
-		if (setsockopt(ping->sockfd, SOL_SOCKET, SO_DONTROUTE,
-				&one, sizeof(one)) < 0)
-		{
-			fprintf(stderr, "ft_ping: setsockopt(SO_DONTROUTE): %s\n",
-				strerror(errno));
-			return (-1);
-		}
-	}
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
-	if (setsockopt(ping->sockfd, SOL_SOCKET, SO_RCVTIMEO,
-			&tv, sizeof(tv)) < 0)
-	{
-		fprintf(stderr, "ft_ping: setsockopt(SO_RCVTIMEO): %s\n",
-			strerror(errno));
-		return (-1);
-	}
-	return (0);
-}
+Failure without root:
 
-int	set_ip_timestamp(t_ping *ping)
-{
-	unsigned char	rspace[MAX_IPOPTLEN];
-	int				type;
-
-	if (ping->ip_ts_type & SOPT_TSADDR)
-		type = IPOPT_TS_TSANDADDR;
-	else
-		type = IPOPT_TS_TSONLY;
-	memset(rspace, 0, sizeof(rspace));
-	rspace[0] = IPOPT_TS;
-	rspace[1] = sizeof(rspace);
-	if (type != IPOPT_TS_TSONLY)
-		rspace[1] -= sizeof(uint32_t);
-	rspace[2] = 5;
-	rspace[3] = type;
-	if (setsockopt(ping->sockfd, IPPROTO_IP,
-			IP_OPTIONS, rspace, rspace[1]) < 0)
-	{
-		fprintf(stderr, "ft_ping: setsockopt(IP_OPTIONS): %s\n",
-			strerror(errno));
-		return (-1);
-	}
-	return (0);
-}
-
-int	create_socket(t_ping *ping)
-{
-	ping->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-	if (ping->sockfd < 0)
-	{
-		fprintf(stderr, "ft_ping: socket: %s\n", strerror(errno));
-		return (-1);
-	}
-	if (set_sock_options(ping) != 0)
-	{
-		close(ping->sockfd);
-		ping->sockfd = -1;
-		return (-1);
-	}
-	return (0);
-}
+```
+ft_ping: socket: Operation not permitted
 ```
 
 ---
 
-## Line-by-line: preamble and `g_dontroute`
+## `set_sock_options()` — kernel configuration
 
-| Line | Code | Explanation |
-|------|------|-------------|
-| 1 | `#include "ft_ping.h"` | Pulls in `t_ping`, socket headers (`<sys/socket.h>`, `<netinet/in.h>`), and constants (`MAX_IPOPTLEN`, `SOPT_*`, `IPOPT_*`). |
-| 3 | `extern int g_dontroute;` | **Declaration** of a global defined in `main.c`. Set to `1` when the user passes `-r`. `socket.c` only reads it to decide whether to set `SO_DONTROUTE`. Using a global avoids adding another field to `t_ping` for one flag. |
+`setsockopt(sockfd, level, option, &value, len)` changes how the kernel handles traffic on this socket. `socket.c` sets:
+
+### `SO_BROADCAST` (always)
+
+Generic socket flag. Unicast ping does not need broadcast, but inetutils `ping` enables it — `ft_ping` does the same for reference compatibility.
+
+### `IP_TTL` (always)
+
+Sets the **Time To Live** byte on **outgoing** IPv4 headers. Value comes from `ping->ttl` (default **64**, flag `--ttl N`). Routers decrement TTL; at zero they drop the packet and may send ICMP *Time Exceeded*. See [TTL.md](TTL.md).
+
+### `IP_TOS` (if `-T` was passed)
+
+Sets the **Type of Service** byte when `ping->tos >= 0`. If `-T` was not used, `tos` stays `-1` and this option is skipped. See [TOS.md](TOS.md).
+
+### `SO_DONTROUTE` (if `-r`)
+
+When global `g_dontroute` is set in `main.c` for flag `-r`, the kernel must **not** use the routing table — only directly connected destinations. Works for `127.0.0.1`; remote hosts often fail.
+
+### `SO_RCVTIMEO` (always, 1 second)
+
+Limits how long `recvmsg()` may block waiting for data. The main loop also uses `select()` with a **10 ms** timeout so packets can be sent on schedule; `SO_RCVTIMEO` is an extra safety net so receive never hangs indefinitely.
+
+| Option | CLI flag | Stored in |
+|--------|----------|-----------|
+| `IP_TTL` | `--ttl` | `ping->ttl` |
+| `IP_TOS` | `-T` | `ping->tos` |
+| `SO_DONTROUTE` | `-r` | `g_dontroute` (global in `main.c`) |
 
 ---
 
-## Line-by-line: `set_sock_options()`
+## `set_ip_timestamp()` — IP options on send
 
-Applies standard socket options immediately after the raw socket is created. Returns `0` on success, `-1` on any `setsockopt` failure.
+When the user passes `--ip-timestamp tsonly` or `tsaddr`, `main()` calls this **after** `create_socket()`.
 
-| Line | Code | Explanation |
-|------|------|-------------|
-| 5 | `static int set_sock_options(t_ping *ping)` | `static` — not visible outside this file. Takes session state; needs `ping->sockfd`, `ping->ttl`, `ping->tos`. |
-| 7 | `int one;` | Integer flag used as “enable” (`1`) for boolean socket options. |
-| 8 | `struct timeval tv;` | Holds receive timeout for `SO_RCVTIMEO`. |
-| 10 | `one = 1;` | Prepare enable value for options that take `int` on/off. |
-| 11–12 | `setsockopt(..., SO_BROADCAST, &one, ...)` | **Level** `SOL_SOCKET` (generic socket). **Option** `SO_BROADCAST` — allow broadcast traffic on this socket. Unicast ping does not need it; inetutils `ping` sets it, so `ft_ping` matches reference behavior. |
-| 13–16 | `if (... < 0) { fprintf ... return (-1); }` | `setsockopt` returns `-1` on error; `errno` explains why (permission, unsupported option). Abort socket setup. |
-| 18–19 | `setsockopt(..., IPPROTO_IP, IP_TTL, &ping->ttl, ...)` | **Level** `IPPROTO_IP` (IPv4). **Option** `IP_TTL` — default TTL for **outgoing** IP headers built by the kernel. Value from `ping->ttl` (default **64**, `--ttl N`). See [TTL.md](TTL.md). |
-| 20–23 | error handling | Same pattern: print `IP_TTL` failure and return `-1`. |
-| 25 | `if (ping->tos >= 0)` | TOS is optional. `init_ping()` sets `tos = -1`; `-T N` sets `0…255`. Skip `IP_TOS` when flag not used. |
-| 27–28 | `setsockopt(..., IP_TOS, &ping->tos, ...)` | Sets the **Type of Service** byte on outgoing IPv4 packets. See [TOS.md](TOS.md). Many networks ignore or rewrite TOS. |
-| 29–33 | error handling | TOS failure is fatal for startup (same as other options). |
-| 35 | `if (g_dontroute)` | Only when user passed **`-r`** (bypass routing tables). |
-| 37 | `one = 1;` | Reuse `one` (still 1; explicit reassignment before `SO_DONTROUTE`). |
-| 38–39 | `setsockopt(..., SO_DONTROUTE, &one, ...)` | **Do not consult the routing table** — send only to directly connected networks. Works for `127.0.0.1`; remote targets often fail cleanly. |
-| 40–44 | error handling | `SO_DONTROUTE` failure → message and `-1`. |
-| 46–47 | `tv.tv_sec = 1; tv.tv_usec = 0;` | Receive timeout: **1 second**, 0 microseconds. |
-| 48–49 | `setsockopt(..., SO_RCVTIMEO, &tv, ...)` | If `recvmsg()` blocks longer than 1 s with no data, it returns with an error (often `EAGAIN`/`EWOULDBLOCK`). The main loop also uses `select()` with 10 ms so sends stay on schedule; this is a **socket-level safety net**. |
-| 50–54 | error handling | `SO_RCVTIMEO` failure → `-1`. |
-| 55 | `return (0);` | All options applied successfully. |
-
-### `setsockopt` call shape
+The function builds a binary **IP Timestamp** option ([RFC 791](../rfc/rfc791.txt)) in a 40-byte buffer and passes it to the kernel:
 
 ```c
-setsockopt(sockfd, level, option_name, &value, sizeof(value));
+setsockopt(sockfd, IPPROTO_IP, IP_OPTIONS, rspace, length);
 ```
 
-| Parameter | In `ft_ping` |
-|-----------|----------------|
-| `sockfd` | `ping->sockfd` from `create_socket()` |
-| `level` | `SOL_SOCKET` (generic) or `IPPROTO_IP` (IPv4) |
-| `option_name` | `SO_BROADCAST`, `IP_TTL`, … |
-| `value` | Pointer to `int` or `struct timeval` |
-| `length` | `sizeof` that value |
-
----
-
-## Line-by-line: `set_ip_timestamp()`
-
-Builds an **IP Timestamp** option ([RFC 791](../rfc/rfc791.txt)) and attaches it to every outgoing packet via `IP_OPTIONS`. Called from `main()` only when `--ip-timestamp tsonly` or `tsaddr` is set.
-
-| Line | Code | Explanation |
-|------|------|-------------|
-| 58 | `int set_ip_timestamp(t_ping *ping)` | Public function; failure prevents program start. |
-| 60 | `unsigned char rspace[MAX_IPOPTLEN];` | Buffer for raw IP option bytes. `MAX_IPOPTLEN` is **40** (`ft_ping.h`) — max IP options space in standard header. |
-| 61 | `int type;` | Timestamp sub-type: timestamps only vs timestamp + address. |
-| 63–64 | `if (ping->ip_ts_type & SOPT_TSADDR) type = IPOPT_TS_TSANDADDR;` | User chose **`tsaddr`** (`--ip-timestamp tsaddr`). Each router may record time **and** its IP. |
-| 65–66 | `else type = IPOPT_TS_TSONLY;` | Default / **`tsonly`** — record timestamps only. |
-| 67 | `memset(rspace, 0, sizeof(rspace));` | Zero buffer before filling option layout. |
-| 68 | `rspace[0] = IPOPT_TS;` | Option **type** = 68 (`0x44`) — IP Timestamp per RFC 791. |
-| 69 | `rspace[1] = sizeof(rspace);` | Option **length** — initially full 40 bytes. |
-| 70–71 | `if (type != IPOPT_TS_TSONLY) rspace[1] -= sizeof(uint32_t);` | For **tsandaddr**, inetutils uses a slightly shorter option (reserve 4 bytes less in length field). |
-| 72 | `rspace[2] = 5;` | **Pointer** — offset (in 4-byte units from start of option) where the next timestamp slot will be written. Value `5` matches inetutils layout (data starts after 4-byte option header). |
-| 73 | `rspace[3] = type;` | Low 4 bits of byte 3 = flag: `0` = tsonly, `1` = tsandaddr (`IPOPT_TS_TSONLY` / `IPOPT_TS_TSANDADDR`). |
-| 74–75 | `setsockopt(..., IP_OPTIONS, rspace, rspace[1])` | Pass built option to kernel. Length argument is `rspace[1]` (not always 40 after adjustment). Kernel copies option into outgoing IP headers. |
-| 76–79 | error handling | Common failures: option not supported, buffer too large, permission. |
-| 81 | `return (0);` | Timestamp option active for this socket. |
-
-### IP Timestamp option layout (first bytes)
+The kernel attaches that option to every outgoing IP packet on this socket. Routers along the path *may* fill timestamp slots; if replies still carry options, `print_ip_opt()` in `print.c` can print a `TS:` line.
 
 ```
-Byte:  0        1           2          3           4 …
-     +--------+-----------+----------+-----------+-----
-     | type   | length    | pointer  | OFLW|FLG | data area …
-     | 0x44   | 40 or 36  | 5        | type      | (routers fill on path)
-     +--------+-----------+----------+-----------+-----
+  IP option bytes (simplified)
+  ┌──────┬────────┬─────────┬──────────┬─────────────────┐
+  │ type │ length │ pointer │ flags    │ space for TS    │
+  │ 0x44 │ 40/36  │ 5       │ tsonly/  │ (routers write) │
+  │      │        │         │ tsaddr   │                 │
+  └──────┴────────┴─────────┴──────────┴─────────────────┘
 ```
 
-On receive, if the reply still carries options, `print_ip_opt()` in `print.c` may print a `TS:` block. Many networks **drop** packets with IP options — expect loss, not a crash.
+Many networks **drop** packets with IP options. Packet loss is normal; the program must not crash.
 
 ---
 
-## Line-by-line: `create_socket()`
+## How the socket is used after setup
 
-Entry point: allocate the raw ICMP socket and apply `set_sock_options()`.
+Once `ping->sockfd` is ready, the rest of the program treats it as a bidirectional ICMP channel.
 
-| Line | Code | Explanation |
-|------|------|-------------|
-| 84 | `int create_socket(t_ping *ping)` | Called from `main()` after `parse_args()`; requires root (checked in `main` before this call). |
-| 86 | `ping->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);` | Create socket: **IPv4** (`AF_INET`), **raw** (`SOCK_RAW`), protocol **ICMP** (`IPPROTO_ICMP` = 1). Raw socket lets the process read/write ICMP (and see full IP packets on receive). Requires **CAP_NET_RAW** / root. |
-| 87–90 | `if (ping->sockfd < 0)` | `socket()` returns `-1` on failure (no permission, kernel limit, etc.). Print `ft_ping: socket: …` and return `-1`. |
-| 92 | `if (set_sock_options(ping) != 0)` | Apply TTL, TOS, broadcast, optional `-r`, receive timeout. |
-| 93–96 | `close(ping->sockfd); ping->sockfd = -1; return (-1);` | **Cleanup on partial failure** — do not leak fd if `setsockopt` failed. Mark fd invalid so `cleanup()` does not double-close wrongly (caller must not use bad fd). |
-| 98 | `return (0);` | Socket ready; `main()` may call `set_ip_timestamp()` next, then `setuid()`. |
+### Sending (`send.c`)
 
-### Why `SOCK_RAW` + `IPPROTO_ICMP`
+```c
+sendto(ping->sockfd, packet, pkt_sz, 0,
+    (struct sockaddr *)&ping->dest_addr, sizeof(ping->dest_addr));
+```
 
-| Socket type | What you send | What you receive |
-|-------------|---------------|------------------|
-| Normal UDP/TCP | Application payload | Payload only |
-| **Raw ICMP** | ICMP message (type 8 + data); kernel adds IP header | **Full IP datagram** (IP header + ICMP) |
+- `packet` = ICMP header (8 bytes) + payload (timestamp + pattern data).
+- Destination = `ping->dest_addr` from DNS resolution in `dns.c`.
+- The kernel wraps the buffer in an IPv4 header (using TTL, TOS, and IP options from `setsockopt`).
 
-`ft_ping` builds the ICMP header in `send.c` and parses IP + ICMP in `recv.c`.
+### Receiving (`recv.c`)
 
----
+```c
+recvmsg(ping->sockfd, &msg, 0);
+```
 
-## Options summary
+- Buffer contains **IP header + ICMP message**.
+- Sender address is in `msg.msg_name` (`struct sockaddr_in`).
+- See [RECV.md](RECV.md) for parsing and filtering by `ping->ident`.
 
-| `setsockopt` | Flag / source | Effect |
-|--------------|---------------|--------|
-| `SO_BROADCAST` | always | Match inetutils; allow broadcast on socket |
-| `IP_TTL` | `ping->ttl` (`--ttl`, default 64) | Outgoing hop limit |
-| `IP_TOS` | `ping->tos` (`-T`, if ≥ 0) | Outgoing QoS byte |
-| `SO_DONTROUTE` | `g_dontroute` (`-r`) | Bypass routing table |
-| `SO_RCVTIMEO` | fixed 1 s | Max block time in `recvmsg` |
-| `IP_OPTIONS` | `set_ip_timestamp()` (`--ip-timestamp`) | IP Timestamp option on send |
+### Waiting (`main.c`)
+
+```c
+select(ping->sockfd + 1, &readfds, NULL, NULL, &tv);  // tv = 10 ms
+```
+
+`select` watches whether the socket has incoming data without blocking the send timer for the full second.
 
 ---
 
-## Error messages
+## Data flow (one round trip)
 
-| Message | Typical cause |
-|---------|----------------|
-| `ft_ping: socket: Operation not permitted` | Not run as root |
-| `ft_ping: setsockopt(IP_TTL): …` | Invalid TTL value or kernel restriction |
-| `ft_ping: setsockopt(IP_OPTIONS): …` | IP options not supported (common on some hosts) |
-| `ft_ping: setsockopt(SO_DONTROUTE): …` | `-r` not allowed for this socket/target |
+```
+  ping_loop
+      │
+      ├─ send_ping()
+      │     build ICMP Echo Request (type 8)
+      │     checksum()
+      │     sendto(sockfd) ──────────────► kernel ──► wire
+      │
+      ├─ select(sockfd, 10ms)
+      │
+      └─ recv_ping()
+            recvmsg(sockfd) ◄──────────── kernel ◄── wire
+            parse IP + ICMP
+            print_echo_reply() or print_icmp_error()
+```
+
+Echo **Reply** (type 0) is accepted only if ICMP **id** matches `ping->ident` (`getpid() & 0xFFFF`). Other ICMP types may be shown as errors. See [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md).
+
+---
+
+## Functions in `socket.c` (summary)
+
+| Function | Role |
+|----------|------|
+| `create_socket` | `socket(SOCK_RAW)` + `set_sock_options`; returns `-1` on failure |
+| `set_sock_options` | `static` helper: broadcast, TTL, TOS, `-r`, receive timeout |
+| `set_ip_timestamp` | Optional `IP_OPTIONS` for `--ip-timestamp` |
+
+`g_dontroute` is declared `extern` in `socket.c` and defined in `main.c` when `-r` is parsed — a simple way to pass one flag without extending `t_ping`.
+
+---
+
+## Common errors
+
+| Message | Cause |
+|---------|--------|
+| `ft_ping: socket: Operation not permitted` | Program not started as root |
+| `ft_ping: setsockopt(IP_OPTIONS): …` | Host/kernel rejects IP options |
+| `ft_ping: setsockopt(SO_DONTROUTE): …` | `-r` not supported for this target |
+| `ft_ping: recvmsg: …` | Rare socket error (not `EAGAIN` / `EINTR`) |
+
+---
+
+## Related docs
+
+| Document | Content |
+|----------|---------|
+| [ARCHITECTURE.md](../ARCHITECTURE.md) | Module map, `setuid` after socket |
+| [COMMAND_FLOW.md](../COMMAND_FLOW.md) | Startup order in `main()` |
+| [RECV.md](RECV.md) | Reading on `ping->sockfd` |
+| [FLAGS.md](../FLAGS.md) | Flags that affect socket options |

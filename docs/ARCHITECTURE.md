@@ -295,7 +295,7 @@ Order matters: **args and DNS before root**, **socket before setuid**, **signals
 
 ### `socket.c`
 
-See **[SOCKET.md](concepts/SOCKET.md)** for full source and line-by-line explanation.
+See **[SOCKET.md](concepts/SOCKET.md)** — what sockets are, raw ICMP vs normal sockets, lifecycle, and how `socket.c` configures the fd.
 
 | Function | Purpose |
 |----------|---------|
