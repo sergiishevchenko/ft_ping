@@ -1,6 +1,6 @@
 # Sockets in `ft_ping`
 
-A **socket** is the operating-system endpoint your program uses to talk to the network. The kernel owns the actual NIC drivers, routing tables, and protocol stacks; your code opens a socket, configures it, then reads and writes through it with system calls (`sendto`, `recvmsg`, `setsockopt`, …).
+A **socket** is the operating-system endpoint your program uses to talk to the network. The kernel owns the actual NIC drivers, routing tables, and protocol stacks; your code opens a socket, configures it, then reads and writes through it with system calls (`sendto`, `recvmsg`, `setsockopt`, …). See **[KERNEL-NETWORKING.md](KERNEL-NETWORKING.md)** for a full explanation of that user/kernel split.
 
 `ft_ping` uses one **raw ICMP socket** for the whole session. All of that setup lives in `srcs/socket.c`. Sending and receiving on the same fd happen in `send.c`, `recv.c`, and `main.c` (`ping_loop`).
 
@@ -10,9 +10,7 @@ Related: [ICMP.md](ICMP.md), [IPv4.md](IPv4.md), [TTL.md](TTL.md), [TOS.md](TOS.
 
 ## Normal socket vs raw socket
 
-Most programs use **connected** sockets (TCP) or **datagram** sockets (UDP). The kernel hides IP and transport headers: you send application bytes, you receive application bytes.
-
-`ping` is different. It must build and inspect **ICMP** messages directly. That requires a **raw socket**:
+`ping` must build and inspect **ICMP** directly — see [KERNEL-NETWORKING.md](KERNEL-NETWORKING.md) for how TCP/UDP sockets hide headers and why raw ICMP is different. Summary:
 
 | | TCP/UDP socket | Raw ICMP socket (`ft_ping`) |
 |--|----------------|----------------------------|
