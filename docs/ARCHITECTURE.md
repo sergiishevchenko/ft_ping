@@ -295,6 +295,8 @@ Order matters: **args and DNS before root**, **socket before setuid**, **signals
 
 ### `socket.c`
 
+See **[SOCKET.md](concepts/SOCKET.md)** for full source and line-by-line explanation.
+
 | Function | Purpose |
 |----------|---------|
 | `set_sock_options` | `SO_BROADCAST`, `IP_TTL`, `IP_TOS`, `SO_DONTROUTE`, `SO_RCVTIMEO` |
