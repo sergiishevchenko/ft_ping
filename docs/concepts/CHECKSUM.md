@@ -144,13 +144,13 @@ Added to sum as: 0000 0000 0100 0010   (zero-padded to 16 bits)
                            only the low byte is meaningful
 ```
 
-In our 12-byte example `len` reaches 0 after the loop, so this branch is skipped.
+In the 12-byte example `len` reaches 0 after the loop, so this branch is skipped.
 
 ---
 
 ### Step 3 — Folding carries into 16 bits
 
-In **one's complement arithmetic**, there is no "overflow" — a carry out of the most significant bit wraps around and is added back to the least significant bit. The 32-bit accumulator captured all carries in bits 16–31. Now we fold them back:
+In **one's complement arithmetic**, there is no "overflow" — a carry out of the most significant bit wraps around and is added back to the least significant bit. The 32-bit accumulator captured all carries in bits 16–31. The carries are then folded back:
 
 ```c
 sum = (sum >> 16) + (sum & 0xFFFF);   // first fold
@@ -206,7 +206,7 @@ and (uint16_t)~sum would invert only the low 16 bits, producing a wrong checksum
 
 A third fold is never needed: the maximum value after the first fold is `0xFFFF + 0x0001 = 0x1_0000`, so the second fold adds at most 1.
 
-#### Back to our example
+#### Back to the example
 
 ```
 sum = 0xB7D2 after first fold
@@ -248,9 +248,9 @@ sum:        1   0   1   1   0   1   1   1   1   1   0   1   0   0   1   0
 
 #### Why invert (`~`)?
 
-The `~` is not byte swapping — it flips **every bit** (`0→1`, `1→0`). It is the final step of the **one's complement** algorithm (RFC 1071), not an optional trick.
+The `~` is not byte swapping — it flips **every bit** (`0→1`, `1→0`). It is the final step of the **one's complement** algorithm (RFC 1071), required by the one's complement algorithm.
 
-After summing all words (with the checksum field zeroed) and folding carries, you get a 16-bit value `sum`. The checksum stored in the packet is `~sum`. The receiver then runs the **same function** over the entire message **including** that checksum field. If the data is intact, the folded sum is always `0xFFFF`, and `~0xFFFF = 0x0000` — a clean pass/fail test.
+After summing all words (with the checksum field zeroed) and folding carries, the folded result is a 16-bit value `sum`. The checksum stored in the packet is `~sum`. The receiver then runs the **same function** over the entire message **including** that checksum field. If the data is intact, the folded sum is always `0xFFFF`, and `~0xFFFF = 0x0000` — a clean pass/fail test.
 
 See [Why inversion (~)?](#why-inversion-) for a concrete numeric walkthrough using `sum = 0x9E3F` → checksum `0x61C0`.
 
@@ -372,7 +372,7 @@ Binary:   0000 0000 0000 0001  1001 1110 0011 1110
                  (carry)             (sum)
 ```
 
-The `_` is a visual separator — `0x0001_9E3E` = `0x00019E3E`. It makes the carry/sum split obvious at a glance.
+The `_` is a visual separator — `0x0001_9E3E` = `0x00019E3E`. It separates the carry and sum fields visually.
 
 ### Line 5: `uint16_t *ptr;`
 
@@ -390,7 +390,7 @@ A 32-bit accumulator. Uninitialized.
 
 ### Line 8: `ptr = (uint16_t *)data;`
 
-The `void *data` pointer (pointing at the start of our 11-byte packet) is cast to `uint16_t *`. From now on, each `*ptr` reads 2 bytes at a time.
+The `void *data` pointer (pointing at the start of the 11-byte packet) is cast to `uint16_t *`. From now on, each `*ptr` reads 2 bytes at a time.
 
 ```
 ptr → address 0x00 (first byte of packet: 0x08)
@@ -691,7 +691,7 @@ It flips every bit of the folded 16-bit sum — **not** the byte order. This is 
 
 ### Sender side
 
-Suppose that after summing all 16-bit words (with the checksum field set to zero) and folding carries, you get:
+After summing all 16-bit words (with the checksum field set to zero) and folding carries, the result is:
 
 ```
 sum = 0x9E3F
@@ -747,7 +747,7 @@ So the checksum is **chosen** so that data + checksum always produce the "perfec
 
 ### What the receiver actually checks
 
-The receiver does not compare "my sum == your checksum". It runs one test:
+The receiver does not compare "computed sum == stored checksum". It runs one test:
 
 ```
 checksum(entire_packet_including_checksum_field) == 0x0000 ?

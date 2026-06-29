@@ -74,7 +74,7 @@ It is a **single global pointer** shared by the whole process. Only one option i
 | **`optarg`** | `char *` | `getopt_long` | Argument string for the **current** option (`"3"`, `"64"`, …) |
 | **`optind`** | `int` | `getopt_long` | Index in `argv` of the **next** token to examine |
 | **`optopt`** | `int` | `getopt_long` | Bad option character when return is `'?'` |
-| **`opterr`** | `int` | **you** (`parse_args`) | If non-zero, libc prints errors; `ft_ping` sets `opterr = 0` |
+| **`opterr`** | `int` | **`parse_args`** | If non-zero, libc prints errors; `ft_ping` sets `opterr = 0` |
 
 ### `optarg` — the argument string
 
@@ -114,7 +114,7 @@ if (optopt && optopt != '?')
 ### `opterr` — silence libc
 
 ```c
-opterr = 0;   /* parse_args — we print our own ft_ping: messages */
+opterr = 0;   /* parse_args — custom messages are printed ft_ping: messages */
 ```
 
 ---
@@ -193,7 +193,7 @@ parse_number(optarg, ...);         /* optarg read inside */
 
 | Design | Pros | Cons |
 |--------|------|------|
-| Global `optarg` (POSIX style) | short call sites; matches `man 3 getopt` | hidden dependency; easy to misuse |
+| Global `optarg` (POSIX style) | short call sites; matches `man 3 getopt` | hidden dependency; requires discipline |
 | `handle_option(ping, opt, optarg)` | explicit | more parameters on every branch |
 
 `ft_ping` follows the standard libc convention.
@@ -212,7 +212,7 @@ parse_number(optarg, ...);         /* optarg read inside */
 
 `parse_number` only reads the string synchronously — fine.
 
-If you ever needed to keep the text, copy it:
+To retain the text beyond the next `getopt_long` call, copy it:
 
 ```c
 strdup(optarg);   /* not used in ft_ping */

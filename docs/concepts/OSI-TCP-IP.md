@@ -1,6 +1,6 @@
 # OSI and TCP/IP models
 
-Two reference models describe how data moves across a network: the **OSI model** (7 layers, theoretical) and the **TCP/IP model** (4 layers, practical Internet stack). **ft_ping** lives at the boundary of **application** and **network** layers: your program builds ICMP messages; the kernel handles IP and everything below.
+Two reference models describe how data moves across a network: the **OSI model** (7 layers, theoretical) and the **TCP/IP model** (4 layers, practical Internet stack). **ft_ping** lives at the boundary of **application** and **network** layers: the program builds ICMP messages; the kernel handles IP and everything below.
 
 ---
 
@@ -117,7 +117,7 @@ The models are **not identical**; mapping is approximate:
 
 | Concept | OSI term | TCP/IP term | In `ft_ping` |
 |---------|----------|-------------|--------------|
-| Your program | Layer 7 | Application | `main.c`, `send.c`, `recv.c` |
+| Application | Layer 7 | Application | `main.c`, `send.c`, `recv.c` |
 | Ports / TCP | Layer 4 | Transport | **Not used** |
 | IP addresses, routing | Layer 3 | Internet | Kernel + `struct ip` in `recv.c` |
 | ICMP echo | Layer 3 (with IP) | Internet | Entire probe logic |
@@ -143,10 +143,10 @@ socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 
 | Aspect | TCP/UDP socket | Raw ICMP (`ft_ping`) |
 |--------|----------------|----------------------|
-| What you send | Payload; kernel adds IP + transport header | **ICMP message**; kernel adds **IP** header |
+| Outbound data | Payload; kernel adds IP + transport header | **ICMP message**; kernel adds **IP** header |
 | Ports | Source/dest port in transport header | No ports |
 | Privileges | Usually any user | **Root** required on most systems |
-| What you receive | Transport payload (or connected stream) | **Full IP packet** (IP + ICMP) |
+| Inbound data | Transport payload (or connected stream) | **Full IP packet** (IP + ICMP) |
 
 ICMP is an integral part of the Internet layer in TCP/IP: it shares IP addresses with TCP/UDP but uses its own message types (echo, unreachable, time exceeded). See [ICMP.md](ICMP.md).
 
@@ -218,20 +218,20 @@ Each layer uses its own addressing scheme. A single ping crosses all of them:
 
 | Layer | Who implements | What `ft_ping` does |
 |-------|----------------|---------------------|
-| Application | Your code | CLI, loop, stats, build/parse ICMP |
+| Application | Application code | CLI, loop, stats, build/parse ICMP |
 | Transport | — | Nothing |
-| Internet | Kernel + your parsing | `setsockopt(IP_TTL, IP_TOS)`; read `struct ip`; ICMP in `send.c` / `recv.c` |
+| Internet | Kernel + application parsing | `setsockopt(IP_TTL, IP_TOS)`; read `struct ip`; ICMP in `send.c` / `recv.c` |
 | Network access | Kernel / driver | Nothing directly |
 | Physical | Hardware | Nothing |
 
-Fields you configure from user space map to **IP header** (Internet layer):
+Fields configured from user space map to **IP header** (Internet layer):
 
 | Flag | IP field | Doc |
 |------|----------|-----|
 | `--ttl N` | TTL | [TTL.md](TTL.md) |
 | `-T N` | Type of Service | [TOS.md](TOS.md) |
 
-Fields you read from replies:
+Fields read from replies:
 
 | Output | Layer | Field |
 |--------|-------|-------|

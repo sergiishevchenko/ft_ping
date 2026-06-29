@@ -72,7 +72,7 @@ PID from getpid():  42857  =  0x0000A799   (32-bit view)
 ICMP identifier:              0xA799       (16-bit field)
 ```
 
-You cannot store the full PID in the packet. The usual compromise: take the **least significant 16 bits**.
+The full PID cannot be stored in the packet. The usual compromise: take the **least significant 16 bits**.
 
 ### What `& 0xFFFF` does
 
@@ -99,7 +99,7 @@ Cast to `(uint16_t)` makes the type match `ping->ident` in `t_ping`.
 | Approach | Problem |
 |----------|---------|
 | Fixed constant (e.g. always `1`) | Every ping on the machine would share the same `id` |
-| Random each run | Works, but you must store it; PID is already unique and free |
+| Random each run | Works, but it must be stored separately; PID is already unique and free |
 | Global counter | Needs shared state across processes; PID is per-process by design |
 
 **PID is the de facto standard** — system `ping` on Linux, BSD, and macOS does the same. It is simple, needs no extra configuration, and is usually unique enough.
@@ -108,7 +108,7 @@ Cast to `(uint16_t)` makes the type match `ping->ident` in `t_ping`.
 
 ## Identifier vs sequence
 
-Easy to confuse; they solve different problems:
+Often confused; they solve different problems:
 
 | | **identifier** | **sequence** |
 |---|----------------|--------------|
@@ -202,7 +202,7 @@ After recv:
 
 ### On big-endian machines
 
-If host order already matches network order, `htons` and `ntohs` are often no-ops (they return the value unchanged). You still call them so the same source compiles and behaves correctly everywhere.
+If host order already matches network order, `htons` and `ntohs` are often no-ops (they return the value unchanged). They are still called so the same source compiles and behaves correctly on all platforms.
 
 ### Rule of thumb for `ft_ping`
 
@@ -238,7 +238,7 @@ Process A (PID 1000)  →  ident = 1000  →  accepts replies where id == 1000
 Process B (PID 1001)  →  ident = 1001  →  accepts replies where id == 1001
 ```
 
-Reply with `id = 1001` arriving at process A is **ignored** — not an error, just not ours.
+Reply with `id = 1001` arriving at process A is **ignored** — not an error, not a match for the local identifier.
 
 ---
 
@@ -329,7 +329,7 @@ The replying host (almost always its **kernel**, not a user program) does **not*
 | sequence | set by sender | **copied unchanged** |
 | data | sender payload | **copied unchanged** |
 
-So `id` is a **local convention** on the sending machine: “this value tags my process.” The internet treats it as opaque bits that must round-trip.
+So `id` is a **local convention** on the sending machine: the value tags the sending process. The network treats it as opaque bits that must round-trip.
 
 ---
 
@@ -347,13 +347,13 @@ PID  1000  =  0x000003E8  →  ident = 0x03E8
 PID 65536 + 1000 = 66536  →  ident = 0x03E8  (collision!)
 ```
 
-If two live `ft_ping` processes collide on `ident`, they may each accept the other’s Echo Replies. Rare on a typical laptop; more plausible on busy servers with many short-lived processes.
+If two live `ft_ping` processes collide on `ident`, they may each accept the other’s Echo Replies. This is uncommon on a single workstation; it is more plausible on servers with many concurrent short-lived processes.
 
 ### PID reuse
 
 When a process exits, the OS may later assign the same PID to a new process. A very delayed reply to an old probe could theoretically match a new process with the same PID and `ident`. Again uncommon for ping.
 
-### Why it is still good enough
+### Why this scheme is sufficient
 
 - Same approach as **inetutils ping** / **iputils ping**
 - Collisions require PIDs differing by a multiple of 65536 **at the same time**
@@ -363,25 +363,25 @@ When a process exits, the OS may later assign the same PID to a new process. A v
 
 ## Common misconceptions
 
-### “The remote host knows my PID”
+### Remote host does not know the sender PID
 
-No. It only echoes the 16-bit `id` field. It has no access to your process table.
+The remote host only echoes the 16-bit `id` field. It has no access to the calling process table.
 
-### “Identifier and sequence are the same thing”
+### Identifier and sequence are distinct
 
-No. `id` = which client; `seq` = which packet from that client. See [Identifier vs sequence](#identifier-vs-sequence).
+`id` identifies the client process; `seq` identifies the packet within that client. See [Identifier vs sequence](#identifier-vs-sequence).
 
-### “We need `id` because packets can arrive out of order”
+### Identifier role vs out-of-order delivery
 
 Partially related. `seq` handles ordering and duplicates within one client. `id` handles **multiple clients** on one machine. Both are needed.
 
-### “`& 0xFFFF` means the handler cooperates with a partial write”
+### `& 0xFFFF` is not related to partial writes
 
-Unrelated topic (that is about signals and `sig_atomic_t`). Here `& 0xFFFF` is simple **bit masking** to fit a 32-bit PID into a 16-bit protocol field.
+This mask is unrelated to signals and `sig_atomic_t`. Here `& 0xFFFF` is **bit masking** to fit a 32-bit PID into a 16-bit protocol field.
 
-### “I can skip `htons` / `ntohs` on my Mac”
+### `htons` / `ntohs` must not be omitted
 
-On some builds they appear to do nothing, but the ICMP header in the buffer is still defined as network byte order. Skipping conversion breaks on little-endian hosts when values are not symmetric (e.g. `ident = 0x0100`). Always convert at the host/wire boundary.
+On some platforms these functions appear to be no-ops, but the ICMP header in the buffer is still defined in network byte order. Omitting conversion fails on little-endian hosts when values are not symmetric (e.g. `ident = 0x0100`). Conversion is required at the host/wire boundary.
 
 ---
 

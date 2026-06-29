@@ -25,6 +25,6 @@ Each page covers:
 
 1. **What it is** — field or protocol role on the wire
 2. **How it works** — packet layout and typical network behavior
-3. **In ft_ping** — flags, source files, and what you see in output
+3. **In ft_ping** — flags, source files, and observable output
 
 For program structure and module map, see [ARCHITECTURE.md](../ARCHITECTURE.md). For CLI flags, see [FLAGS.md](../FLAGS.md). For per-command execution flow, see [COMMAND_FLOW.md](../COMMAND_FLOW.md). For RFC standards, see [rfc/](../rfc/README.md).

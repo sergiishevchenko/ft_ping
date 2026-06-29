@@ -8,7 +8,7 @@ Below is a plain-language overview of how the program works. The rest of this do
 
 ## Overview
 
-You run the program with a destination (IP address or hostname). Once per second (or faster in flood mode) it sends an ICMP Echo Request and waits for an ICMP Echo Reply. For each reply it prints a line with packet size, sequence number, TTL, and time in milliseconds. On exit it prints a summary: packets sent/received, loss, min/avg/max/stddev.
+The program is invoked with a destination (IP address or hostname). Once per second (or faster in flood mode) it sends an ICMP Echo Request and waits for an ICMP Echo Reply. For each reply it prints a line with packet size, sequence number, TTL, and time in milliseconds. On exit it prints a summary: packets sent/received, loss, min/avg/max/stddev.
 
 ### Step by step
 
@@ -163,7 +163,7 @@ If a packet cannot be delivered (TTL expired, network unreachable, etc.), an **i
 │  │ type │ code │ checksum│  unused    ││
 │  └──────┴──────┴─────────┴────────────┘│
 │  ┌────────────────────────────────────┐│
-│  │ "Quoted" — copy of IP + start ICMP ││  ← our original probe
+│  │ "Quoted" — copy of IP + start ICMP ││  ← the original probe
 │  │  inner IP.dst must match target    ││
 │  └────────────────────────────────────┘│
 └────────────────────────────────────────┘
@@ -498,7 +498,7 @@ byte = bit_index / 8
 bit  = 1 << (bit_index % 8)
 ```
 
-If the bit is already set → `(DUP!)`, `num_rept++`. Seq wraps modulo 1024 — enough for typical ping usage.
+If the bit is already set → `(DUP!)`, `num_rept++`. Seq wraps modulo 1024, which is sufficient for normal session lengths.
 
 ### ICMP errors: types and messages
 

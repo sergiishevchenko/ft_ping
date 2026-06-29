@@ -1,6 +1,6 @@
 # Kernel networking and system calls
 
-Your `ft_ping` process does **not** talk to the network card directly. It asks the **kernel** to do that on its behalf. The kernel owns drivers, routing, and most of the protocol stack; your program gets a **socket** (a file descriptor) and uses **system calls** to configure it and move data.
+The `ft_ping` process does **not** talk to the network card directly. It asks the **kernel** to do that on its behalf. The kernel owns drivers, routing, and most of the protocol stack; the program receives a **socket** (a file descriptor) and uses **system calls** to configure it and move data.
 
 This page explains that split: what runs in kernel space, what runs in user space, and how each network syscall used by `ft_ping` fits in.
 
@@ -14,7 +14,7 @@ Modern Unix (Linux, macOS, BSD) separates memory and privileges into two worlds:
 
 | | **User space** | **Kernel space** |
 |--|----------------|------------------|
-| Who runs there | Your program (`ft_ping`, `libc`) | Operating system core |
+| Who runs there | User-space code (`ft_ping`, `libc`) | Operating system core |
 | Privilege | Limited — cannot touch hardware directly | Full — drivers, interrupts, all RAM |
 | Crash effect | Usually kills one process | Can panic the whole machine |
 | Network access | Only through **system calls** | Direct hardware + internal APIs |
@@ -39,7 +39,7 @@ Modern Unix (Linux, macOS, BSD) separates memory and privileges into two worlds:
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-When `sendto()` returns success, it only means the kernel **accepted** your buffer — not necessarily that the packet already left the machine. The driver may queue it for transmission milliseconds later.
+When `sendto()` returns success, it only means the kernel **accepted** the send buffer — not necessarily that the packet already left the machine. The driver may queue it for transmission milliseconds later.
 
 ---
 
@@ -56,11 +56,11 @@ The **Network Interface Card** (Wi‑Fi or Ethernet) speaks electrical or radio 
 To reach `8.8.8.8`, the kernel looks up a **routing table**:
 
 - Is the destination on the local subnet? → send via ARP to that host.
-- Otherwise → forward to the **default gateway** (your router’s IP on the LAN).
+- Otherwise → forward to the **default gateway** (router IP on the LAN).
 
 Flag **`-r`** (`SO_DONTROUTE`) tells the kernel: *skip this lookup* and only send to directly connected networks.
 
-`ft_ping` stores the destination in `ping->dest_addr` (from `getaddrinfo()` in `dns.c`). The kernel uses that address on every `sendto()`; your code does not implement routing logic.
+`ft_ping` stores the destination in `ping->dest_addr` (from `getaddrinfo()` in `dns.c`). The kernel uses that address on every `sendto()`; the program does not implement routing logic.
 
 ### Protocol stack
 
@@ -80,65 +80,65 @@ ICMP is special: it is not TCP or UDP. It rides **directly on IP** (protocol fie
 The **socket API** is the kernel’s uniform door into networking. A socket is:
 
 1. An **object** inside the kernel (buffers, state, protocol hooks).
-2. Exposed to your process as a small integer **file descriptor** (`ping->sockfd`), like a file open for read/write.
+2. Exposed to the process as a small integer **file descriptor** (`ping->sockfd`), like a file open for read/write.
 
 Opening, configuring, and closing sockets are all syscalls. Data transfer too.
 
 ### TCP and UDP: what the kernel hides
 
-Most programs use **connected** sockets (**TCP**, `SOCK_STREAM`) or **datagram** sockets (**UDP**, `SOCK_DGRAM`). In both cases the kernel presents a simple contract: **you send application bytes, you receive application bytes**. IP and transport headers stay inside the kernel — you never assemble or parse them in normal app code.
+Most programs use **connected** sockets (**TCP**, `SOCK_STREAM`) or **datagram** sockets (**UDP**, `SOCK_DGRAM`). In both cases the kernel presents a simple contract: **the application sends and receives payload bytes**. IP and transport headers stay inside the kernel — the application does not assemble or parse them in normal app code.
 
 **TCP (stream socket)**
 
 ```
-Your send() buffer          Kernel builds on the wire
+Application send buffer          Kernel builds on the wire
 ┌─────────────────┐         ┌──────┬─────┬──────────────┬──────────┐
-│ "GET / HTTP..." │  ───►   │ Eth  │ IP  │ TCP hdr+ports│ your data│
+│ "GET / HTTP..." │  ───►   │ Eth  │ IP  │ TCP hdr+ports│ application data│
 └─────────────────┘         └──────┴─────┴──────────────┴──────────┘
                               ▲ hidden    ▲ hidden
 ```
 
 - Kernel adds **TCP header** (ports, sequence, checksum) and **IP header** (src/dst, TTL).
 - Kernel handles retransmits, ordering, connection state (`connect`, `listen`, `accept`).
-- Your `read()` / `write()` see a **byte stream**, not individual packets.
+- A `read()` / `write()` call see a **byte stream**, not individual packets.
 
 **UDP (datagram socket)**
 
 ```
-Your sendto() buffer        Kernel builds on the wire
+Application sendto() buffer        Kernel builds on the wire
 ┌─────────────────┐         ┌──────┬─────┬──────────────┬──────────┐
 │ DNS query bytes │  ───►   │ Eth  │ IP  │ UDP hdr+ports│ payload  │
 └─────────────────┘         └──────┴─────┴──────────────┴──────────┘
 ```
 
 - One `sendto()` → one UDP datagram (up to MTU limits).
-- Kernel still hides IP and UDP headers; you only pass payload + destination address/port.
-- `recvfrom()` gives you payload + peer address/port — not raw IP.
+- Kernel still hides IP and UDP headers; only the payload is passed + destination address/port.
+- `recvfrom()` returns payload + peer address/port — not raw IP.
 
 | | TCP (`SOCK_STREAM`) | UDP (`SOCK_DGRAM`) |
 |--|---------------------|---------------------|
 | Abstraction | Reliable byte stream | Unreliable messages |
 | Headers built by | Kernel | Kernel |
-| What your `send` sees | App data only | App data only |
+| What `send` delivers | App data only | App data only |
 | Addressing | `connect()` or implicit after connect | `sendto()` / `recvfrom()` with port |
 | Typical use | HTTP, SSH | DNS, video, games |
 
 **Why `ft_ping` is different**
 
-ICMP is **not** TCP or UDP. There is no port, no stream, and no kernel wrapper that builds Echo Request for you on a raw socket. `ft_ping` uses `SOCK_RAW` + `IPPROTO_ICMP`:
+ICMP is **not** TCP or UDP. There is no port, no stream, and no kernel wrapper that builds Echo Request on a raw socket. `ft_ping` uses `SOCK_RAW` + `IPPROTO_ICMP`:
 
 | | TCP/UDP socket | Raw ICMP (`ft_ping`) |
 |--|----------------|----------------------|
 | Syscall API | `send` / `sendto` on payload | `sendto` on **ICMP message** |
 | Kernel adds | TCP or UDP + IP + L2 | **IP** + L2 only |
 | On receive | Payload (and maybe peer port) | **Full IP datagram** + ICMP |
-| Who builds ICMP | N/A (different protocol) | **Your code** in `send_ping()` |
+| Who builds ICMP | N/A (different protocol) | **Application code** in `send_ping()` |
 
 So the same socket API (`socket`, `sendto`, `recvmsg`) sits on top of very different kernel behavior. See [SOCKET.md](SOCKET.md) for how `ft_ping` configures and uses its raw socket.
 
 ---
 
-## What your program owns
+## What the application implements
 
 `ft_ping` is responsible for everything the kernel does **not** do for a raw ICMP socket:
 
@@ -153,21 +153,21 @@ So the same socket API (`socket`, `sendto`, `recvmsg`) sits on top of very diffe
 | Parse IP + ICMP on receive | `recv.c` → `recv_ping()` |
 | Print lines and statistics | `print.c`, `stats.c` |
 
-The kernel adds the **IPv4 header** on send and delivers **IP + ICMP** on receive. You add the **ICMP** body.
+The kernel adds the **IPv4 header** on send and delivers **IP + ICMP** on receive. The application adds the **ICMP** body.
 
 ---
 
 ## System calls: the boundary
 
-A **system call** (syscall) is how user code enters the kernel safely. In C you usually call libc wrappers (`sendto`, not `syscall(SYS_sendto, …)` directly).
+A **system call** (syscall) is how user code enters the kernel safely. In C, code typically calls libc wrappers (`sendto`, not `syscall(SYS_sendto, …)` directly).
 
 Typical flow:
 
-1. Your function calls `sendto(sockfd, buf, len, …)`.
+1. The caller invokes `sendto(sockfd, buf, len, …)`.
 2. libc puts arguments in registers / on stack and executes a **trap** instruction.
-3. CPU switches to kernel mode; kernel validates `sockfd`, copies data from your buffer if needed.
+3. CPU switches to kernel mode; kernel validates `sockfd`, copies data from the send buffer if needed.
 4. Kernel runs network stack logic.
-5. Kernel returns a result (byte count or `-1` + `errno`) to your process.
+5. Kernel returns a result (byte count or `-1` + `errno`) to the calling process.
 
 ```
   ft_ping                    libc                 kernel
@@ -212,9 +212,9 @@ ping->sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 **Kernel creates:**
 
 - A new socket data structure.
-- An fd in your process’s file table (`0`, `1`, `2` are stdin/stdout/stderr; socket gets the next free number).
+- An fd in the process file table (`0`, `1`, `2` are stdin/stdout/stderr; the socket receives the next free number).
 
-**Requires root** on most systems because `SOCK_RAW` lets you craft low-level packets. Without privilege: `EPERM` → `Operation not permitted`.
+**Requires root** on most systems because `SOCK_RAW` allows crafting low-level packets. Without privilege: `EPERM` → `Operation not permitted`.
 
 See [SOCKET.md](SOCKET.md) for argument meanings.
 
@@ -332,7 +332,7 @@ Non-fatal errors: `EAGAIN` / `EWOULDBLOCK` (timeout), `EINTR` (signal) → retur
 close(ping->sockfd);
 ```
 
-Kernel frees socket buffers and removes the fd from your process. Called from `cleanup()` at exit.
+Kernel frees socket buffers and removes the fd from the process. Called from `cleanup()` at exit.
 
 ---
 
@@ -373,7 +373,7 @@ recv_ping()
 
 ---
 
-## File descriptor mental model
+## File descriptor overview
 
 Treat `ping->sockfd` like an open file:
 
@@ -386,7 +386,7 @@ Treat `ping->sockfd` like an open file:
 | `poll` / `select` | `select()` on sockfd |
 | `close()` | `close()` |
 
-Data is not stored in your process until `recvmsg` copies it. The kernel may buffer several incoming packets if you do not read fast enough (unusual for ping rates).
+Data is not stored in the process until `recvmsg` copies it. The kernel may buffer several incoming packets if packets are not read promptly (unusual for ping rates).
 
 ---
 

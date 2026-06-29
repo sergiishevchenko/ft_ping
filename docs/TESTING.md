@@ -23,7 +23,7 @@ make re
 - Useful targets:
   - `127.0.0.1` (always reachable)
   - `8.8.8.8` / `1.1.1.1` (public IPs, if allowed)
-  - Your router / LAN host (low latency)
+  - A router or LAN host (low latency)
 
 ## Comparing with system `ping`
 
@@ -118,7 +118,7 @@ Expected:
 
 ### 5) ICMP errors are displayed (inetutils-2.0 behavior)
 
-This is the key “error path” requirement: errors about **your packets to the target** must be printed (and must not crash the program).
+This is the required error-path behavior: errors about **local packets to the target** must be printed (and must not crash the program).
 
 #### TTL exceeded (works on most networks)
 
@@ -127,7 +127,7 @@ sudo ./ft_ping --ttl 1 -c 3 8.8.8.8
 ```
 
 Expected:
-- You should see something like:
+- Expected output includes:
   - `... bytes from <router-ip>: Time to live exceeded`
 - With `-v`, it should additionally print the embedded IP header dump/inner protocol info:
 
@@ -141,7 +141,7 @@ Expected:
 
 ## Output format checks (inetutils-2.0)
 
-These are quick “shape” checks the evaluators look at.
+These verify output shape against inetutils-2.0.
 
 ### 1) Statistics block
 
@@ -159,7 +159,7 @@ Expected at the end:
 
 ### 2) Duplicate replies formatting
 
-This is hard to reproduce on demand in a stable way, but when duplicates happen:
+Duplicate replies are difficult to reproduce reliably; when they occur:
 - Each duplicate reply line must include ` (DUP!)`
 - Statistics must include `+<N> duplicates, `
 - `-c <count>` must count only **unique** replies (duplicates must not make it stop early).
@@ -287,7 +287,7 @@ sudo ./ft_ping --ip-timestamp tsaddr -c 1 8.8.8.8
 ```
 
 Expected:
-- If the network allows IP options, you may see a `TS:` block (and possibly `RR:` if present).
+- If the network allows IP options, a `TS:` block may appear (and possibly `RR:` if present).
 - Many networks drop IP options; in that case, the program may show packet loss, but must not crash.
 
 ## Negative / robustness tests

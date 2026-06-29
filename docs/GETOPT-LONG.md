@@ -8,7 +8,7 @@ For what each flag *does* on the network, see [FLAGS.md](FLAGS.md). For where pa
 
 ## What problem this solves
 
-When you run:
+Example invocation:
 
 ```bash
 sudo ./ft_ping -v -c 3 --ttl 64 8.8.8.8
@@ -238,7 +238,7 @@ void parse_args(t_ping *ping, int argc, char **argv)
     int opt;
     int host_found = 0;
 
-    opterr = 0;   /* suppress libc "unknown option" — we print our own */
+    opterr = 0;   /* suppress libc "unknown option" — custom messages are printed */
 
     while ((opt = getopt_long(argc, argv, "c:fl:np:rs:T:vw:W:?",
                               g_long_opts, NULL)) != -1)

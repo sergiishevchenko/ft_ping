@@ -19,7 +19,7 @@ Official RFC texts from [RFC Editor](https://www.rfc-editor.org/), stored as pla
 | 791 | IPv4 header, TTL, TOS, IP options | `socket.c`, `recv.c`, `print.c` — see [IPv4.md](../concepts/IPv4.md) |
 | 792 | ICMP Echo Request/Reply, errors | `send.c`, `recv.c`, `print.c` — see [ICMP.md](../concepts/ICMP.md) |
 | 1071 | One's complement checksum | `checksum.c` |
-| 1122 | Host must reply to ICMP echo | behavior of remote hosts you ping |
+| 1122 | Host must reply to ICMP echo | behavior of remote hosts being probed |
 | 1624 | Incremental checksum update (TTL/NAT) | background in [CHECKSUM.md](../concepts/CHECKSUM.md) |
 
 Concept pages: [IPv4](../concepts/IPv4.md), [ICMP](../concepts/ICMP.md), [TTL](../concepts/TTL.md), [TOS](../concepts/TOS.md).

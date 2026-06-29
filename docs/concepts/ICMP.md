@@ -18,7 +18,7 @@ Network              IP header  +  ICMP message
 Link                 Ethernet, Wi‑Fi, …
 ```
 
-When you run `ft_ping 8.8.8.8`, the program:
+When `ft_ping 8.8.8.8` is invoked, the program:
 
 1. Opens a **raw socket** (`SOCK_RAW`, `IPPROTO_ICMP`).
 2. Builds an **ICMP Echo Request** (type 8) in user space.
@@ -132,7 +132,7 @@ See [IPv4.md](IPv4.md) for IP header fields; [TTL.md](TTL.md) for `--ttl`.
 ### Echo Request vs Echo Reply
 
 ```
-  YOU (ft_ping)                              TARGET (kernel)
+  ft_ping                              TARGET (kernel)
        |                                           |
        |  Echo Request                             |
        |  type=8  id=X  seq=N                      |
@@ -170,8 +170,8 @@ With `-s 0`: ICMP message is header only (8 bytes); no timeval, reply line shows
 
 | Type | Name | Code (examples) | Meaning |
 |------|------|-----------------|--------|
-| **0** | Echo Reply | 0 | Response to your probe |
-| **8** | Echo Request | 0 | Your outgoing probe |
+| **0** | Echo Reply | 0 | Response to a local probe |
+| **8** | Echo Request | 0 | Outgoing probe |
 | **3** | Destination Unreachable | 0–15 | Host/net/port unreachable, filtered, … |
 | **5** | Redirect | 0–3 | Router suggests a better path |
 | **11** | Time Exceeded | 0 = TTL in transit, 1 = frag reassembly | Packet died in transit or reassembly timed out |
@@ -231,7 +231,7 @@ On **127.0.0.1** (loopback), the same machine is both sender and responder: the 
 | **sequence** | Per-probe counter | Usually starts at 0 and increments |
 | **data** | Arbitrary bytes | Often includes a send timestamp |
 
-The request does **not** ask a question in text. The “question” is only: *can you reach me, and can you give my bits back unchanged?*
+The request carries no textual payload. Its purpose is reachability verification: whether the path works and the payload is returned unchanged.
 
 ### Echo Reply (type 0, code 0)
 
@@ -253,7 +253,7 @@ The responder (almost always the **target OS kernel**, not a user program) does 
 | sequence | same | **yes** — used to pair reply with probe |
 | data | same bytes | **yes** for RTT via embedded timestamp |
 
-If `id` or `seq` differ from what you sent, the packet is not the answer to that probe (or is corrupted).
+If `id` or `seq` differ from the sent values, the packet is not the answer to that probe (or is corrupted).
 
 ### Identifier and sequence in practice
 
@@ -267,7 +267,7 @@ If `id` or `seq` differ from what you sent, the packet is not the answer to that
 **Sequence (`seq`)**
 
 - Increments after each **successful** `sendto` in `ft_ping` (`ping->seq++` in `send_ping()`).
-- Lets you spot **gaps** (lost probes) and **repeats** (duplicate replies).
+- Allows detection of **gaps** (lost probes) and **repeats** (duplicate replies).
 - Stored in the ICMP header in **network byte order** (`htons` on send, `ntohs` on receive).
 
 Example timeline for `-c 3`:
@@ -301,7 +301,7 @@ Default data size is **56 bytes**. Layout in `ft_ping` (see [Complete ICMP messa
 2. On **reply**: read the same `struct timeval` from echoed data.
 3. `gettimeofday` again at receive → `triptime = tv_recv - tv_send` in milliseconds.
 
-The network does not compute RTT; it only **returns your timestamp**. Clock on the remote host is irrelevant because the echoed timeval was generated locally before send.
+The network does not compute RTT; it only **returns the embedded timestamp**. Clock on the remote host is irrelevant because the echoed timeval was generated locally before send.
 
 If `-s 0` (zero data bytes), there is no room for a timestamp and the reply line omits `time=...`.
 
@@ -311,7 +311,7 @@ If `-s 0` (zero data bytes), there is no room for a timestamp and the reply line
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ IP (kernel): src=you, dst=target, TTL=--ttl, proto=ICMP(1)  │
+│ IP (kernel): src=local, dst=target, TTL=--ttl, proto=ICMP(1)  │
 ├─────────────────────────────────────────────────────────────┤
 │ ICMP Echo Request                                           │
 │   type=8  code=0  checksum  id=0xABCD  seq=0                │
@@ -323,7 +323,7 @@ If `-s 0` (zero data bytes), there is no room for a timestamp and the reply line
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ IP (kernel): src=target, dst=you, TTL=peer_remaining        │
+│ IP (kernel): src=target, dst=local, TTL=peer_remaining        │
 ├─────────────────────────────────────────────────────────────┤
 │ ICMP Echo Reply                                             │
 │   type=0  code=0  checksum  id=0xABCD  seq=0   ← same id/seq│
@@ -348,7 +348,7 @@ else:
     → ignore (incoming Echo Request — someone else's ping to us)
 ```
 
-This is why you never print lines for other users’ pings on the same host: their `id` differs.
+This is why lines are not printed lines for other users’ pings on the same host: their `id` differs.
 
 ### What can go wrong (no Echo Reply)
 
@@ -358,9 +358,9 @@ This is why you never print lines for other users’ pings on the same host: the
 | TTL too low | **Time Exceeded** (type 11) from a router — see [TTL.md](TTL.md) |
 | Firewall drops ICMP echo | Timeout, no reply line |
 | Reply arrives after timeout | May appear late or be ignored by higher-level logic |
-| Wrong `id` | Ignored — not counted as your reply |
+| Wrong `id` | Ignored — not counted as a local reply |
 
-Echo Request failure does **not** always produce an ICMP error; firewalls often **drop** without telling you.
+Echo Request failure does **not** always produce an ICMP error; firewalls often **drop** without an ICMP error.
 
 ### Byte order reminder
 
@@ -387,10 +387,10 @@ Echo Request failure does **not** always produce an ICMP error; firewalls often 
 
 | Message | Direction | Role in ping |
 |---------|-----------|--------------|
-| Echo Request (8) | You → target | Your probe |
-| Echo Reply (0) | Target → you | Success |
-| Time Exceeded (11) | Router → you | TTL expired — not a reply |
-| Dest Unreachable (3) | Router/host → you | Delivery failed — not a reply |
+| Echo Request (8) | Source → target | Outgoing probe |
+| Echo Reply (0) | Target → source | Success |
+| Time Exceeded (11) | Router → source | TTL expired — not a reply |
+| Dest Unreachable (3) | Router/host → source | Delivery failed — not a reply |
 
 Only type **0** with matching **id** counts as a successful ping reply for statistics and `-c` count.
 
@@ -420,7 +420,7 @@ When a router or host cannot forward/deliver a packet, it often sends an ICMP **
 │    type, code, checksum             │
 │    (4 unused bytes)                 │
 ├─────────────────────────────────────┤
-│  Quoted: inner IP + start of ICMP   │  ← your original Echo Request
+│  Quoted: inner IP + start of ICMP   │  ← the original Echo Request
 └─────────────────────────────────────┘
 ```
 

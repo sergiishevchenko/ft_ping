@@ -52,7 +52,7 @@ Related fields:
      |     (from R1's IP)         |                      |
 ```
 
-With default TTL **64**, a reply line might show `ttl=118` if the remote host started with 128 and the path back is short — you see the **remaining TTL on the reply**, not your outgoing value.
+With default TTL **64**, a reply line might show `ttl=118` if the remote host started with 128 and the path back is short — the reply line shows the **remaining TTL on the reply**, not the outgoing value.
 
 ### TTL vs traceroute
 
@@ -116,7 +116,7 @@ On a successful **Echo Reply**, the printed `ttl=` value comes from the **reply 
 printf(" ttl=%d", ip_hdr->ip_ttl);   /* srcs/print.c, print_echo_reply() */
 ```
 
-That is the **remaining TTL** when the reply arrived at your host. It reflects the peer’s initial TTL minus hops on the return path. It is useful as a rough hint of path length, not as proof of the TTL you sent.
+That is the **remaining TTL** when the reply arrived at the local host. It reflects the peer’s initial TTL minus hops on the return path. It is useful as a rough hint of path length, not as proof of the outgoing TTL.
 
 ### Verbose mode and TTL errors
 
@@ -125,14 +125,14 @@ That is the **remaining TTL** when the reply arrived at your host. It reflects t
 - No echo replies (100% packet loss toward the target).
 - ICMP errors from the first hop: `Time to live exceeded`.
 
-With `-v`, `print_icmp_error()` also dumps the **quoted inner IP header**, where you can read the TTL and destination of your original probe:
+With `-v`, `print_icmp_error()` also dumps the **quoted inner IP header**, which contains the TTL and destination of the original probe:
 
 ```
 Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src     Dst     Data
  4  5  00  ...                         01  01  ...     ...     ...
 ```
 
-Here `TTL` in the dump is often `01` when you used `--ttl 1`.
+Here `TTL` in the dump is often `01` when `--ttl 1` was used `--ttl 1`.
 
 ### Filtering unrelated TTL errors
 

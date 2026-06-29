@@ -117,7 +117,7 @@ Statistics printing stays in **normal** code after the loop — not in the handl
 | 9 | `void setup_signals(void)` | Called once from `main()` before `ping_loop()`. |
 | 11 | `struct sigaction sa` | Describes how to handle one signal type. |
 | 13 | `memset(&sa, 0, sizeof(sa))` | Zero the struct; unset fields use defaults. |
-| 14 | `sa.sa_handler = sig_int_handler` | On SIGINT, call our function instead of default terminate. |
+| 14 | `sa.sa_handler = sig_int_handler` | On SIGINT, invoke the registered handler instead of default terminate. |
 | 15 | `sigemptyset(&sa.sa_mask)` | Do not block other signals while the handler runs. |
 | 16 | `sa.sa_flags = 0` | No `SA_RESTART` — interrupted `select()` returns `EINTR` (see below). |
 | 17 | `sigaction(SIGINT, &sa, NULL)` | Install handler for **SIGINT** (Ctrl+C). Third arg `NULL` = do not save old action. |
@@ -162,7 +162,7 @@ When `g_stop` becomes `1`, the next loop condition fails and the function return
 if (!g_stop && elapsed_us >= ping->interval)
 ```
 
-Avoids sending **one extra** packet if Ctrl+C arrives between the `while` test and the send branch in the same iteration (edge case; cheap guard).
+Avoids sending **one extra** packet if Ctrl+C arrives between the `while` test and the send branch in the same iteration (edge case).
 
 ---
 

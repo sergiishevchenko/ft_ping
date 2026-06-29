@@ -10,7 +10,7 @@ For a dedicated walkthrough of `getaddrinfo()`, the full `resolve_host()` source
 
 ## What DNS does (overview)
 
-Without DNS you would have to type numeric IPv4 addresses. DNS is a distributed database:
+Without DNS, destinations must be entered as numeric IPv4 addresses. DNS is a distributed database:
 
 ```
   Client                    DNS resolver              Authoritative servers
@@ -28,7 +28,7 @@ Without DNS you would have to type numeric IPv4 addresses. DNS is a distributed 
 | **AAAA** | IPv6 address | **No** — project is IPv4-only |
 | **PTR** | Name for an IP (reverse) | **No** — not used on receive |
 
-DNS lives at the **application** layer: your program calls a library API; the OS resolver talks to configured nameservers (`/etc/resolv.conf`, systemd-resolved, etc.).
+DNS lives at the **application** layer: the program calls a library API; the OS resolver talks to configured nameservers (`/etc/resolv.conf`, systemd-resolved, etc.).
 
 See [OSI-TCP-IP.md](OSI-TCP-IP.md) for where naming fits in the stack.
 
@@ -41,18 +41,18 @@ See [OSI-TCP-IP.md](OSI-TCP-IP.md) for where naming fits in the stack.
 | **Forward** | What IP is `google.com`? | `getaddrinfo()` | **Once** in `resolve_host()` |
 | **Reverse** | What name is `8.8.8.8`? | `getnameinfo()`, `gethostbyaddr()` | **Never** |
 
-### Forward lookup (what we do)
+### Forward lookup (implemented)
 
 ```bash
 sudo ./ft_ping google.com
 ```
 
-1. You pass the string `google.com`.
+1. The CLI argument supplies the string `google.com`.
 2. `getaddrinfo("google.com", …)` returns an IPv4 address.
 3. All ICMP packets go to that address.
-4. Header shows what you typed: `PING google.com (142.250.185.46): 56 data bytes`.
+4. The header shows the original hostname: `PING google.com (142.250.185.46): 56 data bytes`.
 
-### Reverse lookup (what we skip)
+### Reverse lookup (not implemented)
 
 When a reply arrives, the packet contains only a **source IP**. System `ping` with default settings may call reverse DNS to print `bytes from lax17s32-in-f14.1e100.net`. **ft_ping** prints the IP directly:
 
@@ -66,7 +66,7 @@ So reply lines look like:
 64 bytes from 142.250.185.46: icmp_seq=0 ttl=118 time=1.234 ms
 ```
 
-The **`-n`** flag (numeric) is accepted for inetutils compatibility but does not change behavior — we already never reverse-resolve. Forward DNS still runs if the target is a hostname.
+The **`-n`** flag (numeric) is accepted for inetutils compatibility but does not change behavior — reverse DNS is never performed. Forward DNS still runs if the target is a hostname.
 
 ---
 
@@ -137,7 +137,7 @@ Before querying the Internet, the system resolver usually checks:
 | Two hostnames | `only one host allowed` | non-zero |
 | `strdup` fails | `unknown host` (same path as DNS fail) | non-zero |
 
-DNS failure happens **before** socket creation — no root needed to fail on bad hostname (but you still need root to ping once parsing succeeds).
+DNS failure happens **before** socket creation — no root needed to fail on bad hostname (but root is still required to ping once parsing succeeds).
 
 ---
 

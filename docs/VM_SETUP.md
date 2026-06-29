@@ -1,8 +1,8 @@
 # Virtual machine setup for `ft_ping`
 
-This project is expected to be **developed, run, and defended** on a **Debian virtual machine** (Debian **>= 7.0**, Linux kernel **> 3.14**). Evaluation is done on that environment, not on your host OS alone.
+This project is expected to be **developed, run, and defended** on a **Debian virtual machine** (Debian **>= 7.0**, Linux kernel **> 3.14**). Evaluation is done on that environment, not on the host OS alone.
 
-This guide walks through creating the VM, preparing it, moving the project onto it, building, and getting ready for defense.
+This guide covers creating the VM, preparing it, transferring the project, building, and evaluation preparation.
 
 ---
 
@@ -12,32 +12,32 @@ This guide walks through creating the VM, preparing it, moving the project onto 
 |-------------|----------------|
 | Debian VM (>= 7.0) | Expected evaluation target |
 | Kernel > 3.14 | Raw sockets / networking behavior |
-| VM usable from a **cluster computer** | You must be able to log in and work from 42 machines |
-| `gcc`, `make`, project builds with your `Makefile` | Standard 42 C project rules |
+| VM usable from a **cluster computer** | The VM must be reachable for login and work from 42 cluster machines |
+| `gcc`, `make`, project builds with the project `Makefile` | Standard 42 C project rules |
 | Run with **root** (`sudo`) | Raw ICMP sockets need privileges |
 
-You may develop on macOS or another Linux box for convenience, but **always verify on the Debian VM** before submission and defense.
+Development on macOS or another Linux host is possible, but **verification on the Debian VM** is required before submission and defense.
 
 ---
 
 ## 1. Create the virtual machine
 
-Use any hypervisor you prefer (VirtualBox, VMware Fusion, UTM, Parallels, etc.).
+Any common hypervisor may be used (VirtualBox, VMware Fusion, UTM, Parallels, etc.).
 
 ### Suggested VM settings
 
 | Setting | Recommendation |
 |---------|----------------|
 | OS | Debian (64-bit). A current **Debian 12** or **11** image is fine and satisfies >= 7.0 |
-| RAM | 2 GB minimum (4 GB comfortable) |
+| RAM | 2 GB minimum (4 GB recommended) |
 | Disk | 20–40 GB |
-| Network | **NAT** or **Bridged** (bridged is easier if you need SSH from another machine on the LAN) |
+| Network | **NAT** or **Bridged** (bridged networking allows SSH from other machines on the LAN) |
 | CPU | 1–2 cores |
 
 ### Download Debian
 
 - Official images: https://www.debian.org/download
-- Pick the **netinst** (small installer) ISO if you want a minimal system.
+- The **netinst** (small installer) ISO is suitable for a minimal system.
 
 Install Debian with defaults, create a user account, and enable **OpenSSH server** during install if the installer offers it (or install it later).
 
@@ -102,7 +102,7 @@ ping -c 2 8.8.8.8
 ping -c 2 google.com
 ```
 
-If DNS fails, check `/etc/resolv.conf` and your VM network mode (NAT usually works out of the box).
+If DNS fails, check `/etc/resolv.conf` and the VM network mode (NAT usually works out of the box).
 
 **ICMP from the VM:** many networks allow outbound ping; if `ping 8.8.8.8` works, `ft_ping` should be able to reach the same targets (with `sudo`).
 
@@ -118,15 +118,15 @@ On the VM:
 
 ```bash
 cd ~
-git clone <your-repo-url> ft_ping
+git clone <repository-url> ft_ping
 cd ft_ping
 ```
 
-Use your 42 Git remote (GitLab intra, etc.).
+Use the 42 Git remote (GitLab intra, etc.).
 
-### Option B: Copy from your laptop (SCP)
+### Option B: Copy from a development host (SCP)
 
-From your **host** (replace `user` and `vm-ip`):
+From the **development host** (replace `user` and `vm-ip`):
 
 ```bash
 scp -r /path/to/ft_ping user@vm-ip:~/
@@ -168,7 +168,7 @@ sudo ./ft_ping -v -c 2 127.0.0.1
 sudo ./ft_ping --ttl 1 -c 2 8.8.8.8
 ```
 
-You should see echo replies on localhost and often **Time to live exceeded** toward a remote host when TTL is 1.
+Expected output includes echo replies on localhost and, with TTL 1 toward a remote host, often **Time to live exceeded**.
 
 Full test checklist: `docs/TESTING.md`.
 
@@ -176,7 +176,7 @@ Full test checklist: `docs/TESTING.md`.
 
 ## 7. Use the VM from a 42 cluster computer
 
-You should be able to use the VM **from a cluster machine**.
+The VM must be usable **from a cluster machine**.
 
 Typical setup:
 
@@ -194,13 +194,13 @@ Typical setup:
 3. **From the cluster**
 
    ```bash
-   ssh youruser@<vm-ip>
+   ssh <user>@<vm-ip>
    cd ~/ft_ping
    make re
    sudo ./ft_ping -c 2 127.0.0.1
    ```
 
-If the cluster cannot reach your laptop’s NAT VM, use **bridged networking** or run the VM on a machine reachable from the cluster (some students keep the VM on a home server or use 42’s provided VMs if available).
+If the cluster cannot reach a NAT-configured VM on a development host, use **bridged networking** or run the VM on a machine reachable from the cluster.
 
 ---
 

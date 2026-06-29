@@ -155,7 +155,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the full `t_ping` layout.
 
 ### `-?` and `--help`
 
-Prints a short usage summary and exits immediately. This path does **not** open a raw socket, so you can run `./ft_ping -?` or `./ft_ping --help` without `sudo`. Use it to check supported options during development or on the evaluation VM. Any unknown option (for example `-z`) prints `invalid option` and a non-zero exit code instead of help.
+Prints a short usage summary and exits immediately. This path does **not** open a raw socket, so `./ft_ping -?` and `./ft_ping --help` work without `sudo`. The option list can be checked during development or on the evaluation VM. Any unknown option (for example `-z`) prints `invalid option` and a non-zero exit code instead of help.
 
 | | |
 |---|---|
@@ -169,13 +169,13 @@ Prints a short usage summary and exits immediately. This path does **not** open 
 
 ### `-v` (verbose)
 
-**Required by the subject.** Verbose mode changes how much the program tells you about the network beyond a simple echo reply line. In normal mode you only see successful replies; many ICMP error packets from routers are silently ignored if they are not about your target. With `-v`, the header line also shows the ICMP **identifier** (useful when several ping processes run at once), and when something goes wrong you get human-readable error text plus an **`IP Hdr Dump:`** block that decodes the quoted inner IP packet from the error.
+**Required by the subject.** Verbose mode increases diagnostic output beyond a simple echo reply line. In normal mode only successful replies are printed; many ICMP error packets from routers are silently ignored if they are not related to the current target. With `-v`, the header line also shows the ICMP **identifier** (useful when several ping processes run at once), and on errors the program prints descriptive error text plus an **`IP Hdr Dump:`** block that decodes the quoted inner IP packet from the error.
 
-The classic classroom test is `--ttl 1` toward a remote host: without `-v` you may see little; with `-v` you see *Time to live exceeded* and the inner probe that triggered it. See [ICMP.md](concepts/ICMP.md) and [TTL.md](concepts/TTL.md).
+A standard diagnostic is `--ttl 1` toward a remote host: without `-v` output may be minimal; with `-v`, *Time to live exceeded* and the inner probe that triggered it are shown. See [ICMP.md](concepts/ICMP.md) and [TTL.md](concepts/TTL.md).
 
 | | |
 |---|---|
-| **Purpose** | **Required.** Show ICMP problems related to **your** probes and extra diagnostic detail |
+| **Purpose** | **Required.** Show ICMP problems related to **local** probes and extra diagnostic detail |
 | **Syntax** | `-v` |
 | **Behavior** | |
 | | • Header adds ICMP echo **id**: `PING host (ip): N data bytes, id 0xHHHH = NNNN` |
@@ -212,7 +212,7 @@ Limits how long the session runs by counting **successful unique replies**, not 
 
 ### `-s <size>` (payload size)
 
-Controls the **ICMP data** portion only (not the 8-byte ICMP header). The default of 56 bytes is the historic Unix ping size and produces the familiar `64 bytes from …` reply line. The first 16 bytes of payload (when size allows) store a `struct timeval` send timestamp; the remote host echoes it back unchanged so RTT can be computed. With `-s 0` there is no payload, no timestamp, and reply lines show `8 bytes` without `time=… ms`. Large values approach the IPv4 maximum payload (`65507` bytes of ICMP data).
+Controls the **ICMP data** portion only (not the 8-byte ICMP header). The default of 56 bytes is the historic Unix ping size and produces the standard `64 bytes from …` reply line. The first 16 bytes of payload (when size allows) store a `struct timeval` send timestamp; the remote host echoes it back unchanged so RTT can be computed. With `-s 0` there is no payload, no timestamp, and reply lines show `8 bytes` without `time=… ms`. Large values approach the IPv4 maximum payload (`65507` bytes of ICMP data).
 
 | | |
 |---|---|
@@ -231,7 +231,7 @@ Controls the **ICMP data** portion only (not the 8-byte ICMP header). The defaul
 
 ### `-w <timeout>` (deadline)
 
-Sets a **wall-clock** limit on the entire session, measured from `start_time` in whole seconds. Unlike `-c`, which stops after a number of replies, `-w` stops when the clock runs out regardless of how many packets were sent or received. Useful for quick smoke tests (`-w 2 8.8.8.8`) or scripts that must not hang. Can be combined with `-c`: whichever condition is met first ends the loop.
+Sets a **wall-clock** limit on the entire session, measured from `start_time` in whole seconds. Unlike `-c`, which stops after a number of replies, `-w` stops when the clock runs out regardless of how many packets were sent or received. Suitable for short timed runs (`-w 2 8.8.8.8`) or scripts with a fixed duration. Can be combined with `-c`: whichever condition is met first ends the loop.
 
 | | |
 |---|---|
@@ -255,7 +255,7 @@ Only matters when `-c` is set. After all `count` probes have been **sent**, the 
 | **Syntax** | `-W <N>` |
 | **Default** | `10` |
 | **Behavior** | When send quota is reached, `interval` switches to `linger * 1_000_000` µs until replies arrive or linger expires |
-| **Use with** | `-c` (meaningless without a send limit) |
+| **Use with** | `-c` (has no effect without a send limit) |
 | **Implementation** | `finishing` state in `ping_loop()` |
 | **Example** | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` |
 
@@ -263,7 +263,7 @@ Only matters when `-c` is set. After all `count` probes have been **sent**, the 
 
 ### `--ttl <N>`
 
-Sets the IPv4 **Time To Live** on every outgoing probe via `setsockopt(IP_TTL)`. TTL is decremented by each router; at zero the packet is dropped and the router often returns ICMP *Time to live exceeded*. This is how `traceroute` maps hops — ping normally uses 64 so packets reach the target. `--ttl 1` to a remote address is a standard diagnostic: you should see an error from the first gateway, not from the destination. On Debian inetutils the same option is **`-t`**; `ft_ping` uses the long form `--ttl` from the subject.
+Sets the IPv4 **Time To Live** on every outgoing probe via `setsockopt(IP_TTL)`. TTL is decremented by each router; at zero the packet is dropped and the router often returns ICMP *Time to live exceeded*. This is how `traceroute` maps hops — ping normally uses 64 so packets reach the target. `--ttl 1` to a remote address is a standard diagnostic: the expected result is an error from the first gateway, not from the destination. On Debian inetutils the same option is **`-t`**; `ft_ping` uses the long form `--ttl` from the subject.
 
 See [TTL.md](concepts/TTL.md) and [IPv4.md](concepts/IPv4.md).
 
@@ -281,7 +281,7 @@ See [TTL.md](concepts/TTL.md) and [IPv4.md](concepts/IPv4.md).
 
 ### `-T <tos>` (Type of Service)
 
-Sets the IPv4 **Type of Service** byte (today often interpreted as DSCP/ECN) on outgoing packets. Unlike TTL, TOS is optional: if you omit `-T`, `ft_ping` does not call `setsockopt(IP_TOS)` and the kernel uses its default (usually 0). Many networks ignore or rewrite TOS, so `-T 0` and `-T 16` often behave identically — the flag is still required for inetutils parity. Value `16` historically meant “minimize delay” (D bit set).
+Sets the IPv4 **Type of Service** byte (today often interpreted as DSCP/ECN) on outgoing packets. Unlike TTL, TOS is optional: when `-T` is omitted, `ft_ping` does not call `setsockopt(IP_TOS)` and the kernel uses its default (usually 0). Many networks ignore or rewrite TOS, so `-T 0` and `-T 16` often behave identically — the flag is still required for inetutils parity. Value `16` historically meant “minimize delay” (D bit set).
 
 See [TOS.md](concepts/TOS.md).
 
@@ -298,7 +298,7 @@ See [TOS.md](concepts/TOS.md).
 
 ### `-f` (flood)
 
-Sends probes as fast as the loop allows (~100 packets per second with a 10 ms interval) instead of one per second. Output is minimal: a dot per send and a backspace per reply instead of full reply lines — designed for load testing on localhost, not for reading RTT on each packet. Requires root like any raw ICMP use. Combine with `-c` to cap how many flood packets are sent.
+Sends probes as fast as the loop allows (~100 packets per second with a 10 ms interval) instead of one per second. Output is minimal: a dot per send and a backspace per reply instead of full reply lines. Intended for high-rate transmission on localhost, not for per-packet RTT display. Requires root like any raw ICMP use. Combine with `-c` to cap how many flood packets are sent.
 
 | | |
 |---|---|
@@ -328,7 +328,7 @@ Bursts the first `preload` packets **without waiting** between them at the start
 
 ### `-p <hex>` (pattern)
 
-Fills the ICMP payload (after the embedded timestamp) with a repeating **hexadecimal** pattern you provide, instead of the default `0x00, 0x01, 0x02, …`. Handy for spotting corruption on the wire or matching inetutils pattern tests. Up to 16 bytes are decoded from the argument; an odd number of hex digits uses the last nibble alone. Invalid characters produce `error in pattern near '…'` and exit non-zero before any packet is sent.
+Fills the ICMP payload (after the embedded timestamp) with a repeating **hexadecimal** pattern from the command line, instead of the default `0x00, 0x01, 0x02, …`. Useful for detecting corruption on the wire or matching inetutils pattern tests. Up to 16 bytes are decoded from the argument; an odd number of hex digits uses the last nibble alone. Invalid characters produce `error in pattern near '…'` and exit non-zero before any packet is sent.
 
 | | |
 |---|---|
@@ -484,7 +484,7 @@ After decoding, `init_data_buffer()` **repeats** the template to fill the whole 
 -s 56        →  DE AD BE EF DE AD BE EF …  (56 bytes total)
 ```
 
-So you do not type 56 bytes of hex on the command line — a short pattern is enough.
+A short pattern is sufficient; the full `-s` payload size does not need to be entered as hex on the command line.
 
 **Why 16 specifically:**
 
@@ -516,7 +516,7 @@ Payload size is always **`-s`** (default 56 data bytes). The pattern only affect
 
 **Important:** “`-p` omitted” and “`-p` without hex” are **not** the same. Only omitting the flag entirely selects the `0x00, 0x01, 0x02, …` fill. Writing `-p` alone does not fall back to the default — `getopt_long` expects an argument.
 
-#### What you see on screen
+#### Terminal output
 
 `-p` changes **packet bytes**, not the reply **line format**:
 
@@ -563,7 +563,7 @@ ping->data_buffer[i] = ping->pattern[i % ping->pattern_len];
 
 ### `-n` (numeric)
 
-In inetutils, `-n` disables DNS lookups in **reply** lines so you always see numeric IPs. In **ft_ping**, reply lines already use `inet_ntoa()` and never call reverse DNS, so `-n` does not change output — the flag is **accepted** for command-line compatibility when comparing with system `ping`. Forward DNS still runs once at startup if you pass a hostname as the destination.
+In inetutils, `-n` disables DNS lookups in **reply** lines so reply lines show numeric IPs only. In **ft_ping**, reply lines already use `inet_ntoa()` and never call reverse DNS, so `-n` does not change output — the flag is **accepted** for command-line compatibility when comparing with system `ping`. Forward DNS still runs once at startup when the destination is a hostname.
 
 | | |
 |---|---|
@@ -592,7 +592,7 @@ printf("%d bytes from %s: icmp_seq=%u",
 
 `inet_ntoa()` only formats an IP that is **already in the packet metadata**. It does **not** call `gethostbyaddr`, `getnameinfo`, or any reverse DNS. So every reply line is numeric by construction — there is no code path that would print `dns.google` instead of `8.8.8.8`.
 
-That is different from the **startup banner**, which still shows the hostname you typed:
+That is different from the **startup banner**, which still shows the hostname from the command line:
 
 ```c
 printf("PING %s (%s): %zu data bytes", ping->hostname, ping->ip_str, ...);
@@ -611,7 +611,7 @@ Because of this, `handle_option()` treats `-n` as a no-op (`else if (opt == 'n')
 
 ### `-r` (bypass routing)
 
-Sets `SO_DONTROUTE` on the socket so packets are sent **without consulting the normal routing table** — typically only works for directly connected networks or loopback. `127.0.0.1` succeeds; a remote host usually fails with a send or network error, but the program must exit cleanly (no crash). Useful to verify the flag is wired to `setsockopt` on the evaluation VM.
+Sets `SO_DONTROUTE` on the socket so packets are sent **without consulting the normal routing table** — typically only works for directly connected networks or loopback. `127.0.0.1` succeeds; a remote host usually fails with a send or network error, but the program must exit cleanly. The flag verifies that `setsockopt` is wired correctly on the evaluation VM.
 
 | | |
 |---|---|
@@ -644,13 +644,13 @@ Attaches an IPv4 **timestamp option** ([RFC 791](rfc/rfc791.txt)) to each outgoi
 
 ## Positional argument: `<destination>`
 
-Exactly **one** target is required after all options: an IPv4 dotted-quad (`127.0.0.1`, `8.8.8.8`) or a hostname (`google.com`). `getaddrinfo()` resolves names to IPv4 only (`AF_INET`). The **header line keeps the string you typed** (`PING google.com (142.250.…)`) while probes use the resolved address. Missing operand, unknown host, or two hostnames are hard errors with a message and non-zero exit.
+Exactly **one** target is required after all options: an IPv4 dotted-quad (`127.0.0.1`, `8.8.8.8`) or a hostname (`google.com`). `getaddrinfo()` resolves names to IPv4 only (`AF_INET`). The **header line keeps the original hostname string** (`PING google.com (142.250.…)`) while probes use the resolved address. Missing operand, unknown host, or two hostnames are hard errors with a message and non-zero exit.
 
 | | |
 |---|---|
 | **Purpose** | Single IPv4 address or hostname (FQDN) |
 | **Resolution** | `getaddrinfo()` with `AF_INET` only |
-| **Header** | Keeps the **string you typed**: `PING google.com (142.250.…)` |
+| **Header** | Keeps the **original hostname string**: `PING google.com (142.250.…)` |
 | **Errors** | Missing host → `missing host operand`; unknown → `unknown host`; two hosts → `only one host allowed` |
 
 ---

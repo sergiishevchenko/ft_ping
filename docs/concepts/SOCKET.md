@@ -1,6 +1,6 @@
 # Sockets in `ft_ping`
 
-A **socket** is the operating-system endpoint your program uses to talk to the network. The kernel owns the actual NIC drivers, routing tables, and protocol stacks; your code opens a socket, configures it, then reads and writes through it with system calls (`sendto`, `recvmsg`, `setsockopt`, …). See **[KERNEL-NETWORKING.md](KERNEL-NETWORKING.md)** for a full explanation of that user/kernel split.
+A **socket** is the operating-system endpoint the program uses to talk to the network. The kernel owns the actual NIC drivers, routing tables, and protocol stacks; application code opens a socket, configures it, then reads and writes through it with system calls (`sendto`, `recvmsg`, `setsockopt`, …). See **[KERNEL-NETWORKING.md](KERNEL-NETWORKING.md)** for a full explanation of that user/kernel split.
 
 `ft_ping` uses one **raw ICMP socket** for the whole session. All of that setup lives in `srcs/socket.c`. Sending and receiving on the same fd happen in `send.c`, `recv.c`, and `main.c` (`ping_loop`).
 
@@ -15,10 +15,10 @@ Related: [ICMP.md](ICMP.md), [IPv4.md](IPv4.md), [ROUTING.md](ROUTING.md), [TTL.
 | | TCP/UDP socket | Raw ICMP socket (`ft_ping`) |
 |--|----------------|----------------------------|
 | API | `socket(AF_INET, SOCK_STREAM/DGRAM, …)` | `socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)` |
-| On **send** | You pass payload; kernel adds headers | You pass **ICMP bytes**; kernel adds **IP header** |
+| On **send** | Payload is passed; kernel adds headers | **ICMP bytes** are passed; kernel adds **IP header** |
 | On **receive** | Payload only | **Full IP datagram** (IP + ICMP) |
 | Privilege | Usually none | **Root** / `CAP_NET_RAW` |
-| Who builds ICMP | Kernel (for normal ping utility internally) | **Your code** in `send_ping()` |
+| Who builds ICMP | Kernel (for normal ping utility internally) | **Application code** in `send_ping()` |
 
 ```
   ft_ping process                         kernel                         network

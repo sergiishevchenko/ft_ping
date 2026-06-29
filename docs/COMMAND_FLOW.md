@@ -143,7 +143,7 @@ Same as basic ping; only resolution and header text differ.
 | Step | Function | Effect |
 |------|----------|--------|
 | Resolve | `resolve_host()` → `getaddrinfo(AF_INET, …)` | DNS **A record** lookup |
-| Store | `ping->hostname` | `strdup("google.com")` — string you typed |
+| Store | `ping->hostname` | `strdup("google.com")` — original hostname string |
 | Store | `ping->ip_str`, `ping->dest_addr` | Resolved IPv4 for header and `sendto` |
 | Header | `print_header()` | `PING google.com (142.250.x.x): 56 data bytes` |
 | Replies | `print_echo_reply()` | `bytes from <IP>` only — **no reverse DNS** |
@@ -160,7 +160,7 @@ Same as basic ping; only resolution and header text differ.
 **Extra flow vs default:**
 
 1. `print_header` adds `, id 0xHHHH = NNNN` (`stats.c`).
-2. ICMP errors about your probes always print; unrelated errors filtered unless `-v` (see TTL test).
+2. ICMP errors about local probes always print; unrelated errors filtered unless `-v` (see TTL test).
 3. On errors, `print_inner_ip_data()` → `IP Hdr Dump:` block (`print.c`).
 4. Loop exits when `(num_recv - num_rept) >= 2`, then statistics.
 

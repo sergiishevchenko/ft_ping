@@ -1,6 +1,6 @@
 # IPv4 header
 
-Every **ft_ping** probe travels inside an **IPv4 packet**. On send, your code supplies only the ICMP message; the **kernel builds the IP header**. On receive, a raw socket delivers **IP + ICMP**, and the program parses `struct ip` before touching ICMP.
+Every **ft_ping** probe travels inside an **IPv4 packet**. On send, the application supplies only the ICMP message; the **kernel builds the IP header**. On receive, a raw socket delivers **IP + ICMP**, and the program parses `struct ip` before touching ICMP.
 
 This page describes the IPv4 header layout ([RFC 791](../rfc/rfc791.txt)), field by field, and how **ft_ping** reads or configures each part.
 
@@ -154,7 +154,7 @@ Number of **32-bit words** in the IP header, including options. Full breakdown o
 icmp_hdr = (t_icmphdr *)(buf + (ip_hdr->ip_hl << 2));
 ```
 
-Never assume ICMP begins at byte 20 unless you know `ip_hl == 5`.
+Never assume ICMP begins at byte 20 unless `ip_hl == 5` is confirmed `ip_hl == 5`.
 
 ---
 
@@ -260,8 +260,8 @@ Four bytes each (`struct in_addr` / `in_addr_t`).
 
 | Field | Outgoing echo request | Incoming echo reply |
 |-------|----------------------|---------------------|
-| **Source** | Your host’s IP | Remote host (shown as `bytes from X`) |
-| **Destination** | Target (`ping->dest_addr`) | Your host |
+| **Source** | Local host IP | Remote host (shown as `bytes from X`) |
+| **Destination** | Target (`ping->dest_addr`) | Local host |
 
 **DNS:** CLI hostname is resolved once to `dest_addr` / `ip_str` in `resolve_host()`. Reply lines use the **source IP from the packet**, not reverse DNS. See [DNS.md](DNS.md).
 
@@ -344,7 +344,7 @@ Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src     Dst     Data
 | `Src` / `Dst` | IPv4 addresses |
 | `Data` | Option bytes (hex) |
 
-For errors, the dump usually shows the **inner** quoted IP header (your original probe), not the outer router packet.
+For errors, the dump usually shows the **inner** quoted IP header (the original probe), not the outer router packet.
 
 ---
 
@@ -365,7 +365,7 @@ For errors, the dump usually shows the **inner** quoted IP header (your original
 | `ip_src` | Chosen route / interface |
 | `ip_dst` | `dest_addr` from `sendto` |
 
-Your code never writes these bytes directly on send.
+These bytes are not written directly by application code on send.
 
 ---
 

@@ -134,7 +134,7 @@ Like TTL, TOS is applied by the **kernel** on each outgoing IP header. User code
 
 ### TOS in received packets
 
-**Echo replies** do not print TOS on the normal one-line output. You only see TOS when:
+**Echo replies** do not print TOS on the normal one-line output. TOS appears in output when:
 
 - **Verbose ICMP errors** (`-v`): `print_ip_header_dump()` prints `TOS` in the decoded header line:
 
@@ -149,7 +149,7 @@ There is no `-T` echo on successful pings; verifying TOS usually requires `tcpdu
 
 ### Relation to ICMP “At This TOS” errors
 
-If a network cannot reach a host at the requested TOS, you might see ICMP type **3** (Destination Unreachable) with code **11** or **12**. `ft_ping` prints the corresponding strings from `get_dest_unreach_str()` in `srcs/print.c`. These are rare in normal testing.
+If a network cannot reach a host at the requested TOS, ICMP type type **3** (Destination Unreachable) with code **11** or **12**. `ft_ping` prints the corresponding strings from `get_dest_unreach_str()` in `srcs/print.c`. These are rare in normal testing.
 
 ---
 

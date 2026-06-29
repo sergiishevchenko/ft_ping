@@ -142,7 +142,7 @@ Other `t_ping` fields (`num_recv`, stats, …) are updated inside `print_echo_re
 | Name | Value | Meaning |
 |------|-------|---------|
 | `ICMP_ECHOREPLY` | `0` | Echo Reply — success path when `id` matches |
-| `ICMP_ECHO` | `8` | Echo Request — **ignored** if not our reply (see dispatch below) |
+| `ICMP_ECHO` | `8` | Echo Request — **ignored** if not a matching reply (see dispatch below) |
 
 Other ICMP types (3 unreachable, 11 time exceeded, …) are handled via `print_icmp_error`.
 
@@ -195,7 +195,7 @@ A **byte array** on the stack — the raw datagram as it arrived on the wire (IP
 - `uint8_t` = one unsigned byte (0–255), exactly one octet of the packet.
 - `RECV_BUFSIZE` = `65536` = max IPv4 datagram size.
 
-`buf` holds the **contents** of the packet. It does **not** tell you who sent it — that is `from`.
+`buf` holds the **contents** of the packet. It does **not** identify the sender — that is `from`.
 
 ### `struct sockaddr_in from`
 
@@ -255,12 +255,12 @@ msg.msg_iovlen = 2;   /* kernel may split data across both */
 
 ### `struct msghdr` — name, layout, why it exists
 
-**Name:** **msg** (message) + **hdr** (header) — a **control block** describing one receive operation for `recvmsg(2)`. It is **not** part of the packet on the wire; it is a form you fill in before calling the kernel.
+**Name:** **msg** (message) + **hdr** (header) — a **control block** describing one receive operation for `recvmsg(2)`. It is **not** part of the packet on the wire; it is a structure filled in by the caller before calling the kernel.
 
 **Plain idea:** `msghdr` answers two questions for the kernel in one syscall:
 
-1. **Where do I put the packet bytes?** → via `msg_iov` → `iovec` → `buf`
-2. **Where do I put the sender’s address?** → via `msg_name` → `from`
+1. **Where to store the packet bytes?** → via `msg_iov` → `iovec` → `buf`
+2. **Where to store the sender’s address?** → via `msg_name` → `from`
 
 `msghdr` itself stores **no packet data** and **no IP address** — only pointers and sizes.
 
@@ -289,7 +289,7 @@ struct msghdr {
 bytes = recvmsg(ping->sockfd, &msg, 0);
 ```
 
-The kernel reads your `msg`, receives one datagram from `sockfd`, then:
+The kernel reads the supplied `msg`, receives one datagram from `sockfd`, then:
 
 - fills **`from`** through `msg_name` (source IPv4 for `bytes from …`)
 - fills **`buf`** through `msg_iov[0]` (raw bytes: IP + ICMP + payload)
@@ -325,7 +325,7 @@ Return value `bytes` = number of bytes written into `buf` (not including `from`)
 #### Why not plain `recv()`?
 
 ```c
-recv(sockfd, buf, len, 0);   /* only gives you buf — no sender address */
+recv(sockfd, buf, len, 0);   /* only returns buf — no sender address */
 ```
 
 `ft_ping` prints the source IP on every reply line. `print_echo_reply()` reads:
@@ -334,7 +334,7 @@ recv(sockfd, buf, len, 0);   /* only gives you buf — no sender address */
 inet_ntoa(((struct sockaddr_in *)msg->msg_name)->sin_addr);
 ```
 
-That requires `recvmsg` + `msghdr` + `msg_name` → `from`. You cannot get `from` from `buf` alone for display (you could parse the IP header’s source field, but the API already gives you `msg_name`).
+That requires `recvmsg` + `msghdr` + `msg_name` → `from`. The sender address cannot be obtained from `buf` alone for display (the IP header source field could be parsed the IP header’s source field, but the API already provides `msg_name`).
 
 #### `msghdr` vs `iovec` — division of labour
 
@@ -498,7 +498,7 @@ ICMP starts immediately after the IP header. No guessing — offset comes from `
 
 ## Dispatch logic (lines 34–45)
 
-### Branch 1 — our Echo Reply (lines 34–38)
+### Branch 1 — matching Echo Reply (lines 34–38)
 
 ```c
 if (ICMP_HDR_TYPE(icmp_hdr) == ICMP_ECHOREPLY
@@ -531,14 +531,14 @@ if (ICMP_HDR_TYPE(icmp_hdr) != ICMP_ECHO)
 
 | ICMP type | Branch 1 | Branch 2 | Visible result |
 |-----------|----------|----------|----------------|
-| `0` ECHOREPLY, **our id** | yes | — | Normal reply line |
+| `0` ECHOREPLY, **matching id** | yes | — | Normal reply line |
 | `0` ECHOREPLY, **wrong id** | no | yes (`0 != 8`) | `print_icmp_error` (may filter / print "Bad ICMP type: 0") |
 | `8` ECHO (request) | no | **no** (`8 == 8`) | **Silent ignore** |
 | `3`, `11`, … errors | no | yes | Error message (e.g. Time to live exceeded) |
 
-So **incoming Echo Requests** (type 8) are never printed — another host pinging you is ignored.
+So **incoming Echo Requests** (type 8) are never printed — another host pinging the local host is ignored.
 
-`print_icmp_error()` may still **filter** errors: without `-v`, errors whose inner IP destination is not your target are hidden.
+`print_icmp_error()` may still **filter** errors: without `-v`, errors whose inner IP destination is not the current target are hidden.
 
 ### Branch 3 — implicit (line 45)
 

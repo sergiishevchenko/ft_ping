@@ -57,7 +57,7 @@ int getaddrinfo(const char *node,
 |----------|--------------|------|
 | `node` | `host` — CLI string (`google.com`, `8.8.8.8`) | What to resolve |
 | `service` | `NULL` | Port name or number; **not used** — ICMP has no ports |
-| `hints` | IPv4 + raw + ICMP filters | Tell the resolver what kind of address you need |
+| `hints` | IPv4 + raw + ICMP filters | Tell the resolver what kind of address required |
 | `res` | out pointer | Receives a **linked list** of `struct addrinfo` results |
 
 Return value:
@@ -67,7 +67,7 @@ Return value:
 | `0` | Success — `*res` points to the first result node |
 | non-zero | Failure — use `gai_strerror(ret)` for a message (`ft_ping` does not print it) |
 
-The function replaces the older `gethostbyname()`. It is thread-safe and supports both IPv4 and IPv6 (we restrict to IPv4 via `hints`).
+The function replaces the older `gethostbyname()`. It is thread-safe and supports both IPv4 and IPv6 (restricted to IPv4 via `hints`).
 
 ---
 
@@ -120,7 +120,7 @@ Input is already an IPv4 address written as text. No human-readable name to reso
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 1. You pass host = "8.8.8.8"                                    │
+│ 1. CLI argument: host = "8.8.8.8"                                    │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -186,7 +186,7 @@ Input is a **name**. The system must map it to an IPv4 address.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 1. You pass host = "google.com"                                 │
+│ 1. CLI argument: host = "google.com"                                 │
 └────────────────────────────┬────────────────────────────────────┘
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
@@ -244,7 +244,7 @@ Input is a **name**. The system must map it to an IPv4 address.
 | DNS A record? | **Yes** (unless cached) |
 | `sin_addr` | e.g. `8e fa 7a 2e` (142.250.185.46 — example) |
 | `ip_str` | `"142.250.185.46"` |
-| `hostname` | `"google.com"` (what you typed) |
+| `hostname` | `"google.com"` (from the command line) |
 | Header | `PING google.com (142.250.185.46): 56 data bytes` |
 
 Requires working resolver (or `/etc/hosts` entry). Fails offline with `unknown host google.com`.
@@ -355,7 +355,7 @@ dest_addr, ip_str, hostname           dest_addr, ip_str, hostname
             sendto(dest_addr)   ← same API for both cases
 ```
 
-After `resolve_host()` succeeds, **the rest of the program cannot tell** whether you typed an IP or a hostname — only `dest_addr` matters for sending, and `hostname` / `ip_str` for printing.
+After `resolve_host()` succeeds, **the rest of the program cannot tell** whether the input was an IP or a hostname — only `dest_addr` matters for sending, and `hostname` / `ip_str` for printing.
 
 ---
 
@@ -376,7 +376,7 @@ res  →  addrinfo #1  ai_addr = 142.250.185.46
 
 ---
 
-## `hints` — what we ask for
+## `hints` — resolver constraints
 
 ```c
 memset(&hints, 0, sizeof(hints));
@@ -406,7 +406,7 @@ These hints do not open a socket; they only filter what `getaddrinfo` returns.
 
 ## Result structure: where `ai_addr` comes from
 
-`getaddrinfo` **allocates** memory and builds a linked list. You do not create `ai_addr` yourself.
+`getaddrinfo` **allocates** memory and builds a linked list. The caller does not create `ai_addr` manually.
 
 ```
 *res  ──►  struct addrinfo
@@ -417,7 +417,7 @@ These hints do not open a socket; they only filter what `getaddrinfo` returns.
                └── ai_next    ──►  next result (or NULL)
 ```
 
-`ai_addr` is a field inside each `addrinfo` node. Its declared type is `struct sockaddr *` (generic). For IPv4 we cast:
+`ai_addr` is a field inside each `addrinfo` node. Its declared type is `struct sockaddr *` (generic). For IPv4, the code casts:
 
 ```c
 (struct sockaddr_in *)res->ai_addr
@@ -525,7 +525,7 @@ CLI:  ./ft_ping  google.com
 
 | Line(s) | What happens |
 |---------|----------------|
-| `struct addrinfo hints` | Empty form we fill before the call |
+| `struct addrinfo hints` | Structure filled before the call |
 | `struct addrinfo *res` | Will point to the result list (allocated by libc) |
 | `memset(&hints, 0, …)` | Zero all hint fields first |
 | `hints.ai_family = AF_INET` | IPv4 only |

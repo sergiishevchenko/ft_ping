@@ -13,7 +13,7 @@ Related: [TTL.md](TTL.md), [IPv4.md](IPv4.md), [ICMP.md](ICMP.md), [SOCKET.md](S
 A **hop** is one **layer-3 forwarding step** — typically one **router** (or L3 switch) that receives an IP packet, looks at the destination address, and forwards it toward the next network.
 
 ```
-  your PC          hop 1           hop 2           destination
+  source host      hop 1           hop 2           destination
   (ft_ping)        (router)        (router)        (8.8.8.8)
      |                |               |                |
      |--- packet ---->|               |                |
@@ -21,22 +21,22 @@ A **hop** is one **layer-3 forwarding step** — typically one **router** (or L3
      |                |               |--- packet ---->|
 ```
 
-Each hop **decrements TTL** by 1 (see [TTL.md](TTL.md)). If TTL reaches 0 at a router, that router **drops** the packet and usually sends ICMP **Time Exceeded** back to you — that is how you learn the router exists on the path.
+Each hop **decrements TTL** by 1 (see [TTL.md](TTL.md)). If TTL reaches 0 at a router, that router **drops** the packet and usually sends ICMP **Time Exceeded** back to the source — that reveals the router exists on the path.
 
 | Term | Meaning |
 |------|---------|
 | **Hop** | One router (or L3 device) along the path |
-| **Next hop** | The immediate neighbor the kernel sends the packet to (often your default gateway) |
+| **Next hop** | The immediate neighbor the kernel sends the packet to (often the default gateway) |
 | **Path** | Ordered list of hops from source to destination |
 | **RTT** | Round-trip time — not the same as hop count; includes queuing and host processing |
 
-`ping` normally uses a **high TTL** (default 64) so the packet survives enough hops to reach the target. You do **not** see intermediate hops in normal ping output — only the final reply (or an error if something blocks the path).
+`ping` normally uses a **high TTL** (default 64) so the packet survives enough hops to reach the target. Intermediate hops are not shown intermediate hops in normal ping output — only the final reply (or an error if something blocks the path).
 
 ---
 
 ## The routing table
 
-The **routing table** answers: *“For destination IP X, which interface and which next hop should I use?”*
+The **routing table** answers: *“For destination IP X, which interface and which next hop should be used?”*
 
 On Linux the kernel holds this table. User-space tools (`ip route`, NetworkManager, etc.) add or change entries.
 
@@ -110,7 +110,7 @@ On receive, ICMP replies and errors come back through the same socket; routing f
 
 ## Default gateway
 
-The **default gateway** (default route) is the router your machine uses when it does not have a more specific route.
+The **default gateway** (default route) is the router the host uses when it does not have a more specific route.
 
 ```
   Laptop 10.0.2.15  ──►  Gateway 10.0.2.2  ──►  ISP router  ──►  Internet  ──►  8.8.8.8
@@ -143,19 +143,19 @@ Classic diagnostic:
 sudo ./ft_ping --ttl 1 -c 2 8.8.8.8
 ```
 
-Expected: no reply from `8.8.8.8`; ICMP **Time to live exceeded** from the **first routing hop** (often your gateway). With `-v`, you also see the **quoted inner packet** — your original probe’s destination and TTL.
+Expected: no reply from `8.8.8.8`; ICMP **Time to live exceeded** from the **first routing hop** (often the default gateway). With `-v`, the **quoted inner packet** is also shown — the original probe’s destination and TTL.
 
 Full TTL behavior in the project: [TTL.md](TTL.md).
 
 ### TTL in echo reply lines
 
-When you see:
+Example reply line:
 
 ```
 64 bytes from 8.8.8.8: icmp_seq=0 ttl=118 time=12.3 ms
 ```
 
-`ttl=118` is the **remaining TTL in the reply’s IP header**, not the value you sent. The remote host chose its own initial TTL (often 64, 128, or 255); each router on the **return path** decremented it. Rough rule of thumb:
+`ttl=118` is the **remaining TTL in the reply’s IP header**, not the outgoing value. The remote host chose its own initial TTL (often 64, 128, or 255); each router on the **return path** decremented it. Rough rule of thumb:
 
 ```
 initial_ttl_peer - ttl_in_reply ≈ hops on return path
@@ -183,7 +183,7 @@ Purpose in the project: prove the flag is wired to `setsockopt` and the program 
 
 ---
 
-## Routers and ICMP errors you may see
+## Routers and ICMP errors
 
 Routers **forward** IP packets; they do not terminate a normal ping unless something goes wrong.
 
@@ -195,7 +195,7 @@ Routers **forward** IP packets; they do not terminate a normal ping unless somet
 | Firewall blocks ICMP | Often silence | (no reply) | 100% packet loss |
 | Packet reaches target | Target host | 0 Echo Reply | `64 bytes from … time=… ms` |
 
-`print_icmp_error()` in `print.c` formats these messages. Without `-v`, errors are shown only when the **quoted inner IP header** was destined for **your current target** — random ICMP noise from the network is filtered out.
+`print_icmp_error()` in `print.c` formats these messages. Without `-v`, errors are shown only when the **quoted inner IP header** was destined for **the current target** — unrelated ICMP traffic is filtered out.
 
 Details: [ICMP.md](ICMP.md).
 
@@ -207,7 +207,7 @@ Details: [ICMP.md](ICMP.md).
 |---------|--------|
 | `ip route` | Full routing table |
 | `ip route get 8.8.8.8` | Which interface/gateway the kernel **would** use for one destination |
-| `ip addr` | Interface addresses (your source IPs) |
+| `ip addr` | Interface addresses (local source addresses) |
 | `ping -c 2 8.8.8.8` | System ping — sanity check that routing + ICMP work |
 | `traceroute 8.8.8.8` | List of hops (if installed and not blocked) |
 
@@ -218,7 +218,7 @@ ip route get 8.8.8.8
 # 8.8.8.8 via 10.0.2.2 dev eth0 src 10.0.2.15 uid 1000
 ```
 
-That line is exactly what the kernel uses before your probe leaves the machine.
+That line is exactly what the kernel uses before the probe leaves the machine.
 
 ---
 
@@ -235,15 +235,15 @@ That line is exactly what the kernel uses before your probe leaves the machine.
 
 ---
 
-## Mental model (one picture)
+## Overview diagram
 
 ```
                     ROUTING TABLE                    PATH ON THE WIRE
                     ─────────────                    ─────────────────
 
-  dest 8.8.8.8  ──► default via 10.0.2.2  ──►  You ──► R1 ──► R2 ──► … ──► 8.8.8.8
-  dest 127.0.0.1 ──► dev lo               ──►  You ──► (loopback, 0 routers)
-  dest 10.0.2.1  ──► dev eth0 on-link     ──►  You ──► LAN host (ARP)
+  dest 8.8.8.8  ──► default via 10.0.2.2  ──►  src ──► R1 ──► R2 ──► … ──► 8.8.8.8
+  dest 127.0.0.1 ──► dev lo               ──►  src ──► (loopback, 0 routers)
+  dest 10.0.2.1  ──► dev eth0 on-link     ──►  src ──► LAN host (ARP)
 
   Each router: TTL-- ; if TTL==0 → ICMP Time Exceeded to source
   ping: one path, one RTT measurement per reply

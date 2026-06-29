@@ -45,7 +45,7 @@ How **`optarg`** carries flag values into **`parse_number`**: **`docs/OPTARG.md`
 
 | Flag | Part | Description |
 |------|---------|-------------|
-| `-v` | mandatory | Verbose: id in header, ICMP errors about your packets, `IP Hdr Dump:` |
+| `-v` | mandatory | Verbose: id in header, ICMP errors about local packets, `IP Hdr Dump:` |
 | `-?` / `--help` | mandatory | Display help (no root) |
 | `-c <N>` | bonus | Stop after N **unique** replies |
 | `-s <N>` | bonus | Payload size in bytes (default: 56) |
