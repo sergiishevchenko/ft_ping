@@ -819,7 +819,7 @@ On the receive side, the kernel verifies the checksum before delivering the pack
 - **[RFC 1071](../rfc/rfc1071.txt)** — Computing the Internet Checksum (the algorithm itself)
 - **[RFC 792](../rfc/rfc792.txt)** — ICMP — defines the checksum field in ICMP messages
 - **[RFC 791](../rfc/rfc791.txt)** — IPv4 — defines the header checksum (same algorithm, different scope)
-- **[RFC 1624](https://www.rfc-editor.org/rfc/rfc1624)** — Incremental checksum update
+- **[RFC 1624](../rfc/rfc1624.txt)** — Incremental checksum update
 
 ---
 

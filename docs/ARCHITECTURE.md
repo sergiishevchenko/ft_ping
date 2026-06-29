@@ -105,7 +105,7 @@ ft_ping/
 │   └── utils.c        # parse_number, decode_pattern, calc_stddev
 ├── Makefile
 └── docs/
-    ├── rfc/           # RFC 791, 792, 1071, 1122 — standards reference
+    ├── rfc/           # RFC 791, 792, 1071, 1122, 1624 — standards reference
 ```
 
 Dependencies between `.c` files are flat: every file includes only `ft_ping.h`. Modules communicate through the shared `t_ping` object and the global `g_stop` flag.
@@ -691,3 +691,4 @@ Full official text: **[docs/rfc/](rfc/README.md)**
 | 792 | [ICMP](rfc/rfc792.txt) |
 | 1071 | [Internet checksum](rfc/rfc1071.txt) |
 | 1122 | [Host requirements (ICMP echo)](rfc/rfc1122.txt) |
+| 1624 | [Incremental checksum update](rfc/rfc1624.txt) |

@@ -19,7 +19,7 @@ This folder explains the network concepts that matter most for understanding how
 | [SOCKET.md](SOCKET.md) | Raw ICMP sockets — lifecycle, `socket.c`, options |
 | [KERNEL-NETWORKING.md](KERNEL-NETWORKING.md) | Kernel vs user space, TCP/UDP vs raw, syscalls |
 
-**RFC standards:** [rfc/README.md](../rfc/README.md) — [791](../rfc/rfc791.txt), [792](../rfc/rfc792.txt), [1071](../rfc/rfc1071.txt), [1122](../rfc/rfc1122.txt).
+**RFC standards:** [rfc/README.md](../rfc/README.md) — [791](../rfc/rfc791.txt), [792](../rfc/rfc792.txt), [1071](../rfc/rfc1071.txt), [1122](../rfc/rfc1122.txt), [1624](../rfc/rfc1624.txt).
 
 Each page covers:
 
