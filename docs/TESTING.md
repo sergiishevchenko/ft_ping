@@ -65,6 +65,15 @@ RTT values will differ; compare line **format**, not exact milliseconds.
 | `-n` (numeric) | `sudo ./ft_ping -n -c 1 google.com` | `ping -n -c 1 google.com` | Resolves host; numeric IP in replies |
 | `--ip-timestamp tsonly` | `sudo ./ft_ping --ip-timestamp tsonly -c 1 8.8.8.8` | `ping --ip-timestamp tsonly -c 1 8.8.8.8` | `TS:` block or loss; no crash |
 | `--ip-timestamp tsaddr` | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `TS:` block or loss; no crash |
+| **Negative / robustness** | | | |
+| No args | `./ft_ping` | `ping` | Error + usage; non-zero exit |
+| Invalid option | `./ft_ping -Z 127.0.0.1` | `ping -Z 127.0.0.1` | `invalid option`; non-zero exit |
+| Unknown host | `./ft_ping no.such.host` | `ping no.such.host` | `unknown host`; non-zero exit |
+| No permissions | `./ft_ping 127.0.0.1` | — | `Operation not permitted`; non-zero exit |
+| Multiple hosts | `./ft_ping 127.0.0.1 127.0.0.2` | — | `only one host allowed`; non-zero exit |
+| Bad `--ip-timestamp` | `./ft_ping --ip-timestamp foobar 127.0.0.1` | — | `unsupported timestamp type`; non-zero exit |
+| `-r` remote | `sudo ./ft_ping -r -c 1 8.8.8.8` | `ping -r -c 1 8.8.8.8` | May fail; no crash |
+| Unreachable host | `sudo ./ft_ping -c 1 -w 2 192.0.2.1` | `ping -c 1 -w 2 192.0.2.1` | Non-zero exit (no replies) |
 
 On Linux (Debian VM), prefix `ping` with `sudo` when raw sockets require root. macOS: `-W` is in milliseconds (`-W 3000` for linger); `-w`, `-n`, `-T`, and `--ip-timestamp` are not available on BSD `ping`.
 
@@ -290,6 +299,32 @@ Expected:
 - If the network allows IP options, a `TS:` block may appear (and possibly `RR:` if present).
 - Many networks drop IP options; in that case, the program may show packet loss, but must not crash.
 
+## Makefile
+
+```bash
+make re
+```
+
+Expected: clean rebuild, binary `ft_ping` exists.
+
+```bash
+make clean
+```
+
+Expected: object files removed, binary **kept**.
+
+```bash
+make fclean
+```
+
+Expected: binary removed.
+
+```bash
+make
+```
+
+Expected: rebuilds successfully.
+
 ## Negative / robustness tests
 
 ### 1) Missing host operand
@@ -319,6 +354,102 @@ Expected:
 Expected:
 - Prints: `ft_ping: socket: Operation not permitted`
 - Exits non-zero.
+
+### 4) Invalid option
+
+```bash
+./ft_ping -Z 127.0.0.1
+```
+
+Expected:
+- Prints `invalid option -- 'Z'` and exits non-zero.
+
+### 5) Multiple hosts
+
+```bash
+./ft_ping 127.0.0.1 127.0.0.2
+```
+
+Expected:
+- Prints `only one host allowed` and exits non-zero.
+
+### 6) Invalid `--ip-timestamp` value
+
+```bash
+./ft_ping --ip-timestamp foobar -c 1 127.0.0.1
+```
+
+Expected:
+- Prints `unsupported timestamp type: foobar` and exits non-zero.
+
+## Exit codes
+
+### Help exits 0
+
+```bash
+./ft_ping -?; echo $?
+./ft_ping --help; echo $?
+```
+
+Expected: exit code `0`.
+
+### Replies received exits 0
+
+```bash
+sudo ./ft_ping -c 1 127.0.0.1; echo $?
+```
+
+Expected: exit code `0`.
+
+### No replies exits non-zero
+
+```bash
+sudo ./ft_ping -c 1 -w 2 192.0.2.1; echo $?
+```
+
+Expected: exit code `1` (no replies from TEST-NET-1).
+
+## SIGINT handling
+
+```bash
+sudo ./ft_ping 127.0.0.1 &
+PID=$!
+sleep 2
+kill -INT $PID
+wait $PID
+echo $?
+```
+
+Expected:
+- Program prints statistics on SIGINT, then exits cleanly.
+- Exit code ≤ 128 or exactly 130 (128 + SIGINT).
+
+## Edge cases (bad numeric arguments — no crash)
+
+Each command must **not** crash (no segfault / signal). A clean error message and non-zero exit is OK; timeout (the command taking too long) is also acceptable. The program must never be killed by a signal.
+
+```bash
+sudo ./ft_ping -c 0 127.0.0.1         # 0 = unlimited (same as no -c)
+sudo ./ft_ping -c -1 127.0.0.1        # negative count
+sudo ./ft_ping -c abc 127.0.0.1       # non-numeric count
+sudo ./ft_ping -s -1 127.0.0.1        # negative size
+sudo ./ft_ping -s 99999 127.0.0.1     # size above 65507
+sudo ./ft_ping --ttl 0 127.0.0.1      # TTL 0
+sudo ./ft_ping --ttl 999 127.0.0.1    # TTL above 255
+sudo ./ft_ping -T 256 127.0.0.1       # TOS above 255
+sudo ./ft_ping -w 0 127.0.0.1         # immediate deadline
+sudo ./ft_ping -W -1 127.0.0.1        # negative linger
+sudo ./ft_ping -l -1 127.0.0.1        # negative preload
+```
+
+## `-r` on remote host (clean failure)
+
+```bash
+sudo ./ft_ping -r -c 1 8.8.8.8
+```
+
+Expected:
+- May fail with a send/network error (routing bypassed); must **not** crash.
 
 ## Platform notes (Linux/macOS)
 
