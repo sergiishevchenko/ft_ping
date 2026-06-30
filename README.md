@@ -76,6 +76,16 @@ PING google.com (142.250.185.46): 56 data bytes
 round-trip min/avg/max/stddev = 1.234/1.345/1.456/0.111 ms
 ```
 
+## How it works
+
+1. **Init & parse** — `init_ping` zeros the state with defaults (56-byte payload, TTL 64, 1 s interval). `parse_args` processes flags via `getopt_long`.
+2. **Socket** — `create_socket` opens a `SOCK_RAW / IPPROTO_ICMP` socket and applies `setsockopt`: `IP_TTL`, `IP_TOS`, `SO_BROADCAST`, `SO_DONTROUTE`, `SO_RCVTIMEO`. For `--ip-timestamp`, `IP_OPTIONS` is set with an RFC 791 timestamp header.
+3. **Privilege drop** — after the socket is open, `setuid(getuid())` drops root.
+4. **Ping loop** — `select()`-based: sends ICMP ECHO_REQUEST packets at the configured interval, receives with `recvmsg`. Each reply is validated (checksum, id match), RTT is computed from the embedded `struct timeval`, and duplicates are tracked via a 1024-bit bitmap.
+5. **ICMP errors** — Destination Unreachable, Source Quench, Time Exceeded, Redirect, Parameter Problem are decoded with human-readable messages. In verbose mode (`-v`), the offending IP header is dumped (`IP Hdr Dump:`) along with the inner protocol info (TCP/UDP ports or ICMP id/seq).
+6. **Statistics** — on `SIGINT` or `-c`/`-w` completion, prints packet loss and round-trip min/avg/max/stddev.
+7. **Exit code** — `EXIT_SUCCESS` (0) if at least one reply received, `EXIT_FAILURE` (1) otherwise.
+
 ## Project structure
 
 ```
