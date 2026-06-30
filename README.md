@@ -6,8 +6,6 @@ A from-scratch implementation of the `ping` command in C, using raw ICMP sockets
 
 This project is expected to be run and defended on a **Debian VM (>= 7.0)** with Linux kernel **> 3.14**.
 
-See **`docs/VM_SETUP.md`** for a full guide: creating the VM, packages, networking, SSH from a 42 cluster machine, build/run, and defense checklist.
-
 Quick start on the VM:
 
 ```bash
@@ -25,7 +23,7 @@ make fclean # remove object files and binary
 make re     # full rebuild
 ```
 
-Requires `gcc` and `make`. Compiles with `-Wall -Wextra -Werror`.
+Requires `gcc` and `make`. Compiles with `-Wall -Wextra -Werror` and links with `-lm`.
 
 ## Usage
 
@@ -33,26 +31,20 @@ Requires `gcc` and `make`. Compiles with `-Wall -Wextra -Werror`.
 sudo ./ft_ping [options] <destination>
 ```
 
-Root privileges are required (raw sockets).
+Root privileges are required (raw sockets). After socket creation the binary drops privileges via `setuid(getuid())`.
 
-Full reference: **`docs/FLAGS.md`** — mandatory vs bonus, defaults, inetutils mapping, examples.
-
-Implementation details of **`getopt_long`**, `g_long_opts`, and `parse_args`: **`docs/GETOPT-LONG.md`**.
-
-How **`optarg`** carries flag values into **`parse_number`**: **`docs/OPTARG.md`**.
-
-### Options (summary)
+### Options
 
 | Flag | Part | Description |
 |------|---------|-------------|
 | `-v` | mandatory | Verbose: id in header, ICMP errors about local packets, `IP Hdr Dump:` |
-| `-?` / `--help` | mandatory | Display help (no root) |
+| `-?` / `--help` | mandatory | Display help (no root needed) |
 | `-c <N>` | bonus | Stop after N **unique** replies |
-| `-s <N>` | bonus | Payload size in bytes (default: 56) |
+| `-s <N>` | bonus | Payload size in bytes (default 56, max 65507) |
 | `-w <N>` | bonus | Stop after N seconds (wall clock) |
-| `-W <N>` | bonus | Wait N seconds for replies after last send with `-c` (default: 10) |
-| `--ttl <N>` | bonus | IP TTL (default: 64); inetutils: `-t` |
-| `-T <N>` | bonus | IP Type of Service (0–255) |
+| `-W <N>` | bonus | Wait N seconds for replies after last send with `-c` (default 10) |
+| `--ttl <N>` | bonus | IP TTL (default 64) |
+| `-T <N>` | bonus | IP Type of Service (0-255) |
 | `-f` | bonus | Flood ping (dots, 10 ms interval) |
 | `-l <N>` | bonus | Send first N packets with no delay |
 | `-p <hex>` | bonus | Fill payload with hex pattern (max 16 bytes) |
@@ -84,45 +76,26 @@ PING google.com (142.250.185.46): 56 data bytes
 round-trip min/avg/max/stddev = 1.234/1.345/1.456/0.111 ms
 ```
 
-## How it works
-
-How the program works (flow, functions, module interaction): **`docs/ARCHITECTURE.md`**.
-
-RFC standards (IPv4, ICMP, checksum, host requirements): **`docs/rfc/README.md`**.
-
 ## Project structure
 
 ```
 ft_ping/
 ├── Makefile
 ├── includes/
-│   └── ft_ping.h      # Types, macros, prototypes, macOS/Linux compat
+│   └── ft_ping.h      # types, macros, macOS/Linux ICMP compat layer
 └── srcs/
-    ├── main.c          # Argument parsing (getopt_long), main loop
-    ├── socket.c        # Raw socket creation, setsockopt
+    ├── main.c          # init, argument parsing (getopt_long), ping loop, cleanup
+    ├── socket.c        # raw socket, setsockopt (TTL, TOS, SO_DONTROUTE, IP timestamp)
     ├── dns.c           # DNS resolution (getaddrinfo)
-    ├── send.c          # ICMP ECHO_REQUEST packet construction
-    ├── recv.c          # ICMP response parsing and dispatch
-    ├── print.c         # Output formatting, ICMP error display, IP options
-    ├── stats.c         # Header and final statistics
-    ├── checksum.c      # Internet checksum — see docs/rfc/rfc1071.txt
-    ├── signal.c        # SIGINT handler
-    └── utils.c         # Number parsing, hex pattern decoding
+    ├── send.c          # ICMP ECHO_REQUEST construction, payload fill
+    ├── recv.c          # ICMP response parsing, duplicate detection, dispatch
+    ├── print.c         # echo reply / ICMP error formatting, IP options display
+    ├── stats.c         # PING header line, final statistics (min/avg/max/stddev)
+    ├── checksum.c      # RFC 1071 internet checksum
+    ├── signal.c        # SIGINT handler (sets g_stop)
+    └── utils.c         # parse_number, decode_pattern (hex payload)
 ```
 
 ## Platform support
 
-Works on both **macOS** and **Linux** (Debian 7+, kernel > 3.14). Platform differences in ICMP structures are handled via a compatibility layer in `ft_ping.h`.
-
-## Testing
-
-See **`docs/TESTING.md`** for the full checklist (mandatory, output format, bonus, negative tests).
-
-To compare `ft_ping` with system `ping`, open two terminals and run the paired commands from the table at the top of `docs/TESTING.md`. Each row has `ft_ping`, the matching `ping` command (inetutils on Debian), and the expected result. On the VM, check `ping -V` — that is the reference binary.
-
-```bash
-sudo ./ft_ping -c 3 127.0.0.1    # terminal 1
-ping -c 3 127.0.0.1              # terminal 2
-```
-
-On macOS, `/sbin/ping` is BSD ping: use `-t` for TTL instead of `--ttl`; some inetutils flags (`-w`, `-n`, `-T`, `--ip-timestamp`) are not available.
+Works on both **macOS** and **Linux** (Debian 7+, kernel > 3.14). Platform differences in ICMP structures (`struct icmp` vs `struct icmphdr`) are handled via a compatibility layer with `t_icmphdr` and `ICMP_HDR_*` macros in `ft_ping.h`.
