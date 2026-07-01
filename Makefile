@@ -46,12 +46,13 @@ $(OBJ_DIR):
 -include $(DEPS)
 
 clean:
-	@printf "$(COLOR_BOLD)$(COLOR_RED)CLEAN$(COLOR_RESET) %s\n" "$(OBJ_DIR)"
 	@rm -rf $(OBJ_DIR)
+	@printf "$(COLOR_BOLD)$(COLOR_RED)CLEAN$(COLOR_RESET) %s\n" "$(OBJ_DIR)"
 
-fclean: clean
-	@printf "$(COLOR_BOLD)$(COLOR_RED)FCLEAN$(COLOR_RESET) %s\n" "$(NAME)"
+fclean:
+	@rm -rf $(OBJ_DIR)
 	@rm -f $(NAME)
+	@printf "$(COLOR_BOLD)$(COLOR_RED)FCLEAN$(COLOR_RESET) %s\n" "$(NAME)"
 
 re: fclean all
 

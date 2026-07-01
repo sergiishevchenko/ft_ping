@@ -54,8 +54,23 @@ fi
 
 REAL_USER="${SUDO_USER:-$(whoami)}"
 
+ensure_build_ownership() {
+	chown -R "$REAL_USER" obj "$PING" 2>/dev/null || true
+}
+
+run_make() {
+	local err
+	err=$(sudo -u "$REAL_USER" make -s "$@" 2>&1)
+	local ret=$?
+	if [ $ret -ne 0 ]; then
+		echo "$err" | tail -3 | sed 's/^/         /'
+	fi
+	return $ret
+}
+
 if [ ! -x "$PING" ]; then
 	echo "Building..."
+	ensure_build_ownership
 	sudo -u "$REAL_USER" make -s re || { echo "Build failed"; exit 1; }
 fi
 
@@ -77,20 +92,21 @@ fi
 
 # --- Makefile ---
 header "MANDATORY: Makefile"
-sudo -u "$REAL_USER" make -s re 2>/dev/null && ok "make re" || ko "make re failed"
-sudo -u "$REAL_USER" make -s clean 2>/dev/null
+ensure_build_ownership
+run_make re && ok "make re" || ko "make re failed"
+run_make clean
 if [ -f "$PING" ]; then
 	ok "make clean keeps binary"
 else
 	ko "make clean removed binary"
 fi
-sudo -u "$REAL_USER" make -s fclean 2>/dev/null
+run_make fclean
 if [ ! -f "$PING" ]; then
 	ok "make fclean removes binary"
 else
 	ko "make fclean did not remove binary"
 fi
-sudo -u "$REAL_USER" make -s 2>/dev/null && ok "make (rebuild)" || ko "make failed"
+run_make && ok "make (rebuild)" || ko "make failed"
 
 # --- Help ---
 header "MANDATORY: -? / help"
