@@ -157,16 +157,14 @@ void	parse_args(t_ping *ping, int argc, char **argv)
 	}
 }
 
-static int	timeout_reached(t_ping *ping)
+static int	timeout_reached(t_ping *ping, struct timeval *now)
 {
-	struct timeval	now;
-	long			elapsed_us;
+	long	elapsed_us;
 
 	if (ping->timeout < 0)
 		return (0);
-	gettimeofday(&now, NULL);
-	elapsed_us = (now.tv_sec - ping->start_time.tv_sec) * 1000000L
-		+ (now.tv_usec - ping->start_time.tv_usec);
+	elapsed_us = (now->tv_sec - ping->start_time.tv_sec) * 1000000L
+		+ (now->tv_usec - ping->start_time.tv_usec);
 	return (elapsed_us >= (long)ping->timeout * 1000000L);
 }
 
@@ -191,6 +189,7 @@ static void	ping_loop(t_ping *ping)
 	}
 	send_ping(ping);
 	gettimeofday(&last_send, NULL);
+	ping->start_time = last_send;
 	finishing = 0;
 	while (!g_stop)
 	{
@@ -233,7 +232,7 @@ static void	ping_loop(t_ping *ping)
 				gettimeofday(&last_send, NULL);
 			}
 		}
-		if (timeout_reached(ping))
+		if (timeout_reached(ping, &now))
 			break ;
 	}
 }
