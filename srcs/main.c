@@ -75,7 +75,7 @@ static void	handle_option(t_ping *ping, int opt)
 		ping->pattern_set = true;
 	}
 	else if (opt == 'r')
-		;
+		ping->dontroute = true;
 	else if (opt == 's')
 		ping->data_length = (size_t)parse_number(optarg,
 				PING_MAX_DATALEN, "size");
@@ -105,8 +105,6 @@ static void	handle_option(t_ping *ping, int opt)
 	}
 }
 
-int	g_dontroute = 0;
-
 void	parse_args(t_ping *ping, int argc, char **argv)
 {
 	int		opt;
@@ -129,10 +127,7 @@ void	parse_args(t_ping *ping, int argc, char **argv)
 			print_usage();
 			exit(EXIT_SUCCESS);
 		}
-		if (opt == 'r')
-			g_dontroute = 1;
-		else
-			handle_option(ping, opt);
+		handle_option(ping, opt);
 	}
 	while (optind < argc)
 	{

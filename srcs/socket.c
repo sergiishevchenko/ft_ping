@@ -1,7 +1,5 @@
 #include "ft_ping.h"
 
-extern int	g_dontroute;
-
 static int	set_sock_options(t_ping *ping)
 {
 	int				one;
@@ -32,7 +30,7 @@ static int	set_sock_options(t_ping *ping)
 			return (-1);
 		}
 	}
-	if (g_dontroute)
+	if (ping->dontroute)
 	{
 		one = 1;
 		if (setsockopt(ping->sockfd, SOL_SOCKET, SO_DONTROUTE,

@@ -195,6 +195,9 @@ typedef struct s_ping
 	/* SOPT_TSONLY or SOPT_TSADDR for --ip-timestamp */
 	unsigned int		ip_ts_type;
 
+	/* true when -r given; SO_DONTROUTE bypasses routing table */
+	bool				dontroute;
+
 	/* malloc'd payload template (pattern or default fill) */
 	unsigned char		*data_buffer;
 
