@@ -18,7 +18,6 @@ static void	init_ping(t_ping *ping)
 	ping->pattern_len = MAXPATTERN;
 	ping->pattern_set = false;
 	ping->data_buffer = NULL;
-	ping->seq = 1;
 	ping->stats.tmin = 999999999.0;
 	ping->stats.tmax = 0.0;
 }
