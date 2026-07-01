@@ -239,8 +239,11 @@ Only `-v`, `-f`, and `--ip-timestamp` set `ping->options` (via `|=` in `handle_o
 |------|------|------|
 | `g_stop` | `volatile sig_atomic_t` | set to 1 on Ctrl+C |
 | `g_dontroute` | `int` | 1 when `-r` is passed (outside `t_ping`, read in `socket.c`) |
+| `g_long_opts` | `static struct option[]` | long-option table for `getopt_long` (`main.c` only) |
 
 `volatile sig_atomic_t` for `g_stop` allows safe writes from the signal handler without races with the main loop.
+
+Full Norm justification for each variable: **[GLOBALS.md](GLOBALS.md)**.
 
 ---
 
