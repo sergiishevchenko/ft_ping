@@ -41,8 +41,8 @@ RTT values will differ; compare line **format**, not exact milliseconds.
 | 2) Basic IPv4 (Ctrl+C) | `sudo ./ft_ping 127.0.0.1` | `ping 127.0.0.1` | `PING 127.0.0.1 (127.0.0.1): 56 data bytes`; `64 bytes from ... icmp_seq=0 ...`; Ctrl+C → statistics |
 | 3) Hostname / FQDN | `sudo ./ft_ping google.com` | `ping google.com` | `PING google.com (x.x.x.x): 56 data bytes`; replies show IP only |
 | 4) Verbose (`-v`) | `sudo ./ft_ping -v -c 2 127.0.0.1` | `ping -v -c 2 127.0.0.1` | Header includes `id 0x.... = ....` |
-| 5) TTL exceeded | `sudo ./ft_ping --ttl 1 -c 3 8.8.8.8` | `ping -t 1 -c 3 8.8.8.8` | `Time to live exceeded` from router; 100% loss |
-| 5) TTL exceeded (`-v`) | `sudo ./ft_ping -v --ttl 1 -c 3 8.8.8.8` | `ping -v -t 1 -c 3 8.8.8.8` | Same error + `IP Hdr Dump:` block |
+| 5) TTL exceeded | `sudo ./ft_ping --ttl 1 -c 3 8.8.8.8` | `ping --ttl 1 -c 3 8.8.8.8` | `Time to live exceeded` from router; 100% loss |
+| 5) TTL exceeded (`-v`) | `sudo ./ft_ping -v --ttl 1 -c 3 8.8.8.8` | `ping -v --ttl 1 -c 3 8.8.8.8` | Same error + `IP Hdr Dump:` block |
 | **Output format** | | | |
 | Statistics block | `sudo ./ft_ping -c 3 127.0.0.1` | `ping -c 3 127.0.0.1` | `--- ... ping statistics ---`; packet counts; `round-trip min/avg/max/stddev` |
 | **Bonus** | | | |
@@ -52,8 +52,8 @@ RTT values will differ; compare line **format**, not exact milliseconds.
 | `-s 1000` | `sudo ./ft_ping -s 1000 -c 1 127.0.0.1` | `ping -s 1000 -c 1 127.0.0.1` | Reply `1008 bytes` (8 + 1000) |
 | `-w` (timeout) | `sudo ./ft_ping -w 2 8.8.8.8` | `ping -w 2 8.8.8.8` | Stops after ~2 s; prints statistics |
 | `-W` (linger) | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` | `ping -c 2 -W 3 8.8.8.8` | Waits up to `-W` s for late replies |
-| `--ttl 1` | `sudo ./ft_ping --ttl 1 -c 1 8.8.8.8` | `ping -t 1 -c 1 8.8.8.8` | `Time to live exceeded` |
-| `--ttl 64` | `sudo ./ft_ping --ttl 64 -c 1 8.8.8.8` | `ping -t 64 -c 1 8.8.8.8` | Normal echo reply |
+| `--ttl 1` | `sudo ./ft_ping --ttl 1 -c 1 8.8.8.8` | `ping --ttl 1 -c 1 8.8.8.8` | `Time to live exceeded` |
+| `--ttl 64` | `sudo ./ft_ping --ttl 64 -c 1 8.8.8.8` | `ping --ttl 64 -c 1 8.8.8.8` | Normal echo reply |
 | `-T 0` | `sudo ./ft_ping -T 0 -c 1 127.0.0.1` | `ping -T 0 -c 1 127.0.0.1` | No error (TOS may be ignored) |
 | `-T 16` | `sudo ./ft_ping -T 16 -c 1 127.0.0.1` | `ping -T 16 -c 1 127.0.0.1` | No error (TOS may be ignored) |
 | `-p ff` | `sudo ./ft_ping -p ff -s 56 -c 1 127.0.0.1` | `ping -p ff -s 56 -c 1 127.0.0.1` | No crash |
