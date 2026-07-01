@@ -160,13 +160,14 @@ void	parse_args(t_ping *ping, int argc, char **argv)
 static int	timeout_reached(t_ping *ping)
 {
 	struct timeval	now;
-	long			elapsed;
+	long			elapsed_us;
 
 	if (ping->timeout < 0)
 		return (0);
 	gettimeofday(&now, NULL);
-	elapsed = (now.tv_sec - ping->start_time.tv_sec);
-	return (elapsed >= ping->timeout);
+	elapsed_us = (now.tv_sec - ping->start_time.tv_sec) * 1000000L
+		+ (now.tv_usec - ping->start_time.tv_usec);
+	return (elapsed_us >= (long)ping->timeout * 1000000L);
 }
 
 static void	ping_loop(t_ping *ping)

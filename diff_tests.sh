@@ -66,8 +66,9 @@ norm_verbose() {
 	grep -v '^round-trip' \
 	| sed -E 's/time=[0-9.]+ ms/time=TIME ms/' \
 	| sed -E 's/id 0x[0-9a-f]+ = [0-9]+/id 0xID = ID/' \
+	| sed -E 's/id 0x[0-9a-f]+, seq 0x[0-9a-f]+/id 0xID, seq 0xSEQ/' \
 	| sed -E 's/from [a-zA-Z0-9._-]+ \(([0-9.]+)\)/from \1/' \
-	| sed -E 's/^ [0-9a-f ]{39,}$/IP_HDR_DUMP/' \
+	| sed -E 's/^ +[0-9] +[0-9]+ +[0-9a-f ]{20,}/IP_HDR_DUMP/' \
 	| sed 's/[[:space:]]*$//'
 }
 
