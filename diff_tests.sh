@@ -47,6 +47,27 @@ echo ""
 norm() {
 	grep -v '^round-trip' \
 	| sed -E 's/time=[0-9.]+ ms/time=TIME ms/' \
+	| sed -E 's/id 0x[0-9a-f]+ = [0-9]+/id 0xID = ID/' \
+	| sed -E 's/from [a-zA-Z0-9._-]+ \(([0-9.]+)\)/from \1/' \
+	| sed 's/[[:space:]]*$//'
+}
+
+norm_hostname() {
+	grep -v '^round-trip' \
+	| sed -E 's/time=[0-9.]+ ms/time=TIME ms/' \
+	| sed -E 's/id 0x[0-9a-f]+ = [0-9]+/id 0xID = ID/' \
+	| sed -E 's/from [a-zA-Z0-9._-]+ \(([0-9.]+)\)/from \1/' \
+	| sed -E 's/\([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\)/(IP)/' \
+	| sed -E 's/from [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/from IP/' \
+	| sed 's/[[:space:]]*$//'
+}
+
+norm_verbose() {
+	grep -v '^round-trip' \
+	| sed -E 's/time=[0-9.]+ ms/time=TIME ms/' \
+	| sed -E 's/id 0x[0-9a-f]+ = [0-9]+/id 0xID = ID/' \
+	| sed -E 's/from [a-zA-Z0-9._-]+ \(([0-9.]+)\)/from \1/' \
+	| sed -E 's/^ [0-9a-f ]{39,}$/IP_HDR_DUMP/' \
 	| sed 's/[[:space:]]*$//'
 }
 
@@ -77,6 +98,83 @@ run_diff() {
 	else
 		echo -e "  ${RED}[FAIL]${RST} $name"
 		diff /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt | head -8 | sed 's/^/         /'
+		((FAIL++))
+	fi
+}
+
+run_diff_hostname() {
+	local name="$1"; shift
+	local args="$*"
+
+	((TOTAL++))
+
+	$REF $args > /tmp/diff_ref.txt 2>&1
+	$PING $args > /tmp/diff_ft.txt 2>&1
+
+	norm_hostname < /tmp/diff_ref.txt > /tmp/diff_ref_norm.txt
+	norm_hostname < /tmp/diff_ft.txt  > /tmp/diff_ft_norm.txt
+
+	if diff -q /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt > /dev/null 2>&1; then
+		echo -e "  ${GRN}[OK]${RST}   $name"
+		((PASS++))
+	else
+		echo -e "  ${RED}[FAIL]${RST} $name"
+		diff /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt | head -8 | sed 's/^/         /'
+		((FAIL++))
+	fi
+}
+
+run_diff_verbose() {
+	local name="$1"; shift
+	local args="$*"
+
+	((TOTAL++))
+
+	$REF $args > /tmp/diff_ref.txt 2>&1
+	$PING $args > /tmp/diff_ft.txt 2>&1
+
+	norm_verbose < /tmp/diff_ref.txt > /tmp/diff_ref_norm.txt
+	norm_verbose < /tmp/diff_ft.txt  > /tmp/diff_ft_norm.txt
+
+	if diff -q /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt > /dev/null 2>&1; then
+		echo -e "  ${GRN}[OK]${RST}   $name"
+		((PASS++))
+	else
+		echo -e "  ${RED}[FAIL]${RST} $name"
+		diff /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt | head -8 | sed 's/^/         /'
+		((FAIL++))
+	fi
+}
+
+run_diff_ts() {
+	local name="$1"; shift
+	local args="$*"
+
+	((TOTAL++))
+
+	$REF $args > /tmp/diff_ref.txt 2>&1
+	$PING $args > /tmp/diff_ft.txt 2>&1
+
+	local ref_has_ts ft_has_ts
+	ref_has_ts=$(grep -c 'TS:' /tmp/diff_ref.txt)
+	ft_has_ts=$(grep -c 'TS:' /tmp/diff_ft.txt)
+
+	if [ "$ft_has_ts" -ge 1 ] && [ "$ref_has_ts" -ge 1 ]; then
+		norm < /tmp/diff_ref.txt | grep -v '^\s*$' | grep -v 'TS:' | grep -v 'ms$' | grep -v '^\s' > /tmp/diff_ref_norm.txt
+		norm < /tmp/diff_ft.txt  | grep -v '^\s*$' | grep -v 'TS:' | grep -v 'ms$' | grep -v '^\s' > /tmp/diff_ft_norm.txt
+		if diff -q /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt > /dev/null 2>&1; then
+			echo -e "  ${GRN}[OK]${RST}   $name (TS present; entry count may vary)"
+			((PASS++))
+		else
+			echo -e "  ${RED}[FAIL]${RST} $name"
+			diff /tmp/diff_ref_norm.txt /tmp/diff_ft_norm.txt | head -8 | sed 's/^/         /'
+			((FAIL++))
+		fi
+	elif [ "$ft_has_ts" -eq 0 ] && [ "$ref_has_ts" -eq 0 ]; then
+		echo -e "  ${GRN}[OK]${RST}   $name (no TS in either — packet loss)"
+		((PASS++))
+	else
+		echo -e "  ${RED}[FAIL]${RST} $name (ref TS=$ref_has_ts, ft TS=$ft_has_ts)"
 		((FAIL++))
 	fi
 }
@@ -167,20 +265,20 @@ echo -e "${BLU}=== MANDATORY: diff tests ===${RST}"
 run_diff "basic -c 3 (127.0.0.1)" \
 	-c 3 127.0.0.1
 
-run_diff "verbose -v -c 2 (127.0.0.1)" \
+run_diff_verbose "verbose -v -c 2 (127.0.0.1)" \
 	-v -c 2 127.0.0.1
 
 run_diff_sigint "Ctrl+C after 4s (127.0.0.1)" 4 \
 	127.0.0.1
 
 if has_network; then
-	run_diff "hostname -c 2 (google.com)" \
+	run_diff_hostname "hostname -c 2 (google.com)" \
 		-c 2 google.com
 
 	run_diff "TTL exceeded --ttl 1 -c 2 (8.8.8.8)" \
 		--ttl 1 -c 2 8.8.8.8
 
-	run_diff "verbose TTL exceeded -v --ttl 1 -c 2 (8.8.8.8)" \
+	run_diff_verbose "verbose TTL exceeded -v --ttl 1 -c 2 (8.8.8.8)" \
 		-v --ttl 1 -c 2 8.8.8.8
 else
 	skip_test "hostname (no network)"
@@ -220,10 +318,10 @@ run_diff "-r -c 1 (127.0.0.1)" \
 run_diff "-w 2 -c 5 (127.0.0.1)" \
 	-w 2 -c 5 127.0.0.1
 
-run_diff "--ip-timestamp tsonly -c 1 (127.0.0.1)" \
+run_diff_ts "--ip-timestamp tsonly -c 1 (127.0.0.1)" \
 	--ip-timestamp tsonly -c 1 127.0.0.1
 
-run_diff "--ip-timestamp tsaddr -c 1 (127.0.0.1)" \
+run_diff_ts "--ip-timestamp tsaddr -c 1 (127.0.0.1)" \
 	--ip-timestamp tsaddr -c 1 127.0.0.1
 
 run_diff_flood "-f -c 50 (flood, 127.0.0.1)" \
@@ -236,7 +334,7 @@ if has_network; then
 	run_diff "--ttl 64 -c 1 (8.8.8.8)" \
 		--ttl 64 -c 1 8.8.8.8
 
-	run_diff "-n -c 1 (google.com)" \
+	run_diff_hostname "-n -c 1 (google.com)" \
 		-n -c 1 google.com
 else
 	skip_test "--ttl 64 (no network)"

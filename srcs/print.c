@@ -283,7 +283,7 @@ static void	print_ip_opt_ts(unsigned char **cpp, int *hlen)
 		*hlen -= sizeof(uint32_t);
 		cp += sizeof(uint32_t);
 		j += sizeof(uint32_t);
-		if (!((k & 0x0f) != IPOPT_TS_TSONLY && ((j / 4) % 2 == 1)))
+		if (!((k & 0x0f) != IPOPT_TS_TSONLY && ((j / 4) % 2 == 0)))
 			putchar('\n');
 		if (j >= i)
 			break ;

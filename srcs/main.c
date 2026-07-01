@@ -193,8 +193,6 @@ static void	ping_loop(t_ping *ping)
 	finishing = 0;
 	while (!g_stop)
 	{
-		if (timeout_reached(ping))
-			break ;
 		FD_ZERO(&readfds);
 		FD_SET(ping->sockfd, &readfds);
 		tv.tv_sec = 0;
@@ -234,6 +232,8 @@ static void	ping_loop(t_ping *ping)
 				gettimeofday(&last_send, NULL);
 			}
 		}
+		if (timeout_reached(ping))
+			break ;
 	}
 }
 
