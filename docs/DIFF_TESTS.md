@@ -50,10 +50,10 @@ norm() {
 |---|------|---------|
 | 1 | Basic IPv4 (`-c 3`) | `ping -c 3 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -c 3 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 | 2 | Verbose (`-v`) | `ping -v -c 2 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -v -c 2 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 3 | Hostname / FQDN | `ping -c 2 google.com 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -c 2 google.com 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 4 | TTL exceeded | `ping --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 5 | TTL exceeded + verbose | `ping -v --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -v --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 6 | Ctrl+C (4 sec) | `timeout -s INT 4 ping 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; timeout -s INT 4 ./ft_ping 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 3 | Ctrl+C (4 sec) | `timeout -s INT 4 ping 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; timeout -s INT 4 ./ft_ping 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 4 | Hostname / FQDN | `ping -c 2 google.com 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -c 2 google.com 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 5 | TTL exceeded | `ping --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 6 | TTL exceeded + verbose | `ping -v --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -v --ttl 1 -c 2 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 
 ---
 
@@ -63,18 +63,19 @@ norm() {
 |---|------|---------|
 | 7 | `-c 1` | `ping -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 | 8 | `-s 0` | `ping -s 0 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -s 0 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 9 | `-s 1000` | `ping -s 1000 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -s 1000 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 10 | `--ttl 64` | `ping --ttl 64 -c 1 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ttl 64 -c 1 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 9 | `-s 56` (default) | `ping -s 56 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -s 56 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 10 | `-s 1000` | `ping -s 1000 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -s 1000 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 | 11 | `-T 0` (TOS) | `ping -T 0 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -T 0 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 | 12 | `-T 16` (TOS) | `ping -T 16 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -T 16 -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 | 13 | `-p ff` (pattern) | `ping -p ff -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -p ff -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 14 | `-f -c 50` (flood) | `ping -f -c 50 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -f -c 50 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 15 | `-l 5 -c 5` (preload) | `ping -l 5 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -l 5 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 16 | `-r` (dontroute) | `ping -r -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -r -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 17 | `-n` (numeric) | `ping -n -c 1 google.com 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -n -c 1 google.com 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 18 | `-w 2` (timeout) | `ping -w 2 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -w 2 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 19 | `--ip-timestamp tsonly` | `ping --ip-timestamp tsonly -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ip-timestamp tsonly -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
-| 20 | `--ip-timestamp tsaddr` | `ping --ip-timestamp tsaddr -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ip-timestamp tsaddr -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 14 | `-r` (dontroute) | `ping -r -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -r -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 15 | `-w 2` (timeout) | `ping -w 2 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -w 2 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 16 | `--ip-timestamp tsonly` | `ping --ip-timestamp tsonly -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ip-timestamp tsonly -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 17 | `--ip-timestamp tsaddr` | `ping --ip-timestamp tsaddr -c 1 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ip-timestamp tsaddr -c 1 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 18 | `-f -c 50` (flood) | `ping -f -c 50 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -f -c 50 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 19 | `-l 5 -c 5` (preload) | `ping -l 5 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -l 5 -c 5 127.0.0.1 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 20 | `--ttl 64` | `ping --ttl 64 -c 1 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ttl 64 -c 1 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
+| 21 | `-n` (numeric) | `ping -n -c 1 google.com 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -n -c 1 google.com 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 
 ---
 
@@ -84,9 +85,10 @@ Error messages do not need to match word-for-word (subject says "handle errors")
 
 | # | Test | Command |
 |---|------|---------|
-| 21 | No args | `ping 2>&1 > /tmp/ref.txt; ./ft_ping 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
-| 22 | Unknown host | `ping no.such.host.invalid 2>&1 > /tmp/ref.txt; ./ft_ping no.such.host.invalid 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
-| 23 | Invalid option | `ping -Z 2>&1 > /tmp/ref.txt; ./ft_ping -Z 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
+| 22 | No args | `ping 2>&1 > /tmp/ref.txt; ./ft_ping 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
+| 23 | Unknown host | `ping no.such.host.invalid 2>&1 > /tmp/ref.txt; ./ft_ping no.such.host.invalid 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
+| 24 | Invalid option | `ping -Z 2>&1 > /tmp/ref.txt; ./ft_ping -Z 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
+| 25 | Unreachable host | `ping -c 1 -w 2 192.0.2.1 2>&1 > /tmp/ref.txt; ./ft_ping -c 1 -w 2 192.0.2.1 2>&1 > /tmp/ft.txt; echo "ref=$?"; echo "ft=$?"` |
 
 ---
 
@@ -99,8 +101,8 @@ sudo bash diff_tests.sh
 ```
 
 The script handles additional normalization that `norm()` above does not:
-- **Verbose mode:** normalizes `id 0x… = …` and `ICMP: id 0x…, seq 0x…` (different PID per process), and IP header hex dumps (IP ID, checksum differ between packets)
-- **Hostname tests:** normalizes resolved IPs (DNS load balancing may return different addresses)
+- **Verbose mode:** normalizes `id 0x… = …` and `ICMP: id 0x…, seq 0x…` (different PID per process), and IP header hex dumps / decoded lines (IP ID, checksum differ between packets)
+- **Hostname tests:** normalizes resolved IPs and `ttl=` values (DNS load balancing may return different addresses and different TTLs per route)
 - **IP timestamp tests:** compares format, not exact entry count (kernel fills different numbers of slots depending on loopback path)
 - **Flood mode:** compares only header + statistics lines (dot output is non-deterministic)
 - **Network tests:** skipped automatically if `8.8.8.8` is unreachable
@@ -117,6 +119,7 @@ The script handles additional normalization that `norm()` above does not:
 | `_gateway (ip)` vs `ip` | System ping does reverse DNS in errors; ft_ping does not | Yes (subject: DNS in return is NOT mandatory) |
 | google.com resolves to different IP | DNS load balancing | Yes |
 | IP header dump hex differs | IP ID, checksum unique per packet | Yes |
+| `ttl=` differs for hostname tests | Different route per DNS response | Yes |
 | `--ip-timestamp` entry count varies | Kernel fills different number of slots per run | Usually yes |
 | `round-trip` line values differ | RTT accumulation differs | Yes (line is ignored by evaluator) |
 
