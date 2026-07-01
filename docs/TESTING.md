@@ -31,7 +31,9 @@ Open two terminals and run the same row from the table below. The `ft_ping` colu
 
 Flag details (mandatory vs bonus, behavior, defaults): **`FLAGS.md`**.
 
-RTT values will differ; compare line **format**, not exact milliseconds.
+**Automated diff testing:** see **[DIFF_TESTS.md](DIFF_TESTS.md)** for ready-to-paste diff commands and `diff_tests.sh` for a full automated suite.
+
+RTT values will differ; compare line **format**, not exact milliseconds. See [DIFF_TESTS.md](DIFF_TESTS.md) § *Expected differences* for what the evaluator ignores.
 
 | Test | `ft_ping` | `ping` | Expected |
 |------|-----------|--------|----------|
@@ -76,6 +78,19 @@ RTT values will differ; compare line **format**, not exact milliseconds.
 | Unreachable host | `sudo ./ft_ping -c 1 -w 2 192.0.2.1` | `ping -c 1 -w 2 192.0.2.1` | Non-zero exit (no replies) |
 
 On Linux (Debian VM), prefix `ping` with `sudo` when raw sockets require root. macOS: `-W` is in milliseconds (`-W 3000` for linger); `-w`, `-n`, `-T`, and `--ip-timestamp` are not available on BSD `ping`.
+
+### Evaluation rules (from the scale)
+
+The evaluator compares output via `diff` with these tolerances:
+
+| Rule | Meaning |
+|------|---------|
+| ±30 ms on `time=` | RTT values may differ slightly between runs |
+| No reverse DNS required | Reply lines may show IP only (no hostname) |
+| Last RTT line ignored | `round-trip min/avg/max/stddev` is not compared |
+| Ctrl+C stops the program | Evaluator sends SIGINT manually |
+
+Run `sudo bash diff_tests.sh` for a full automated check with these rules applied.
 
 ## Mandatory tests (must be perfect)
 
