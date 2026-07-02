@@ -279,7 +279,7 @@ send: seq=2  →  reply: seq=2  →  print icmp_seq=2
 send: seq=2  →  reply: seq=2  →  print icmp_seq=2 (DUP!)
 ```
 
-Duplicate detection uses a bitmap (`recv_table` in `t_ping`): the same `seq` seen twice prints `(DUP!)` and increments `num_rept`.
+Duplicate detection uses a circular bitmap (`recv_table` in `t_ping`): the same `seq` seen twice prints `(DUP!)` and increments `num_rept`. See [CIRCULAR-BITMAP.md](CIRCULAR-BITMAP.md) for the full algorithm, examples, and limitations.
 
 ### Payload and round-trip time (RTT)
 

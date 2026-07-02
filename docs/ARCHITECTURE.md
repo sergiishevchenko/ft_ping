@@ -501,7 +501,7 @@ byte = bit_index / 8
 bit  = 1 << (bit_index % 8)
 ```
 
-If the bit is already set → `(DUP!)`, `num_rept++`. Seq wraps modulo 1024, which is sufficient for normal session lengths.
+If the bit is already set → `(DUP!)`, `num_rept++`. Seq wraps modulo 1024, which is sufficient for normal session lengths. See [CIRCULAR-BITMAP.md](concepts/CIRCULAR-BITMAP.md).
 
 ### ICMP errors: types and messages
 

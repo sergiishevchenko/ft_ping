@@ -9,6 +9,7 @@ This folder explains the network concepts that matter most for understanding how
 | [GETADDRINFO.md](GETADDRINFO.md) | `getaddrinfo()` — full `resolve_host()` code, `ai_addr`, `hostname` / `ip_str` / `dest_addr` |
 | [IPv4.md](IPv4.md) | IPv4 header — fields, layout, parsing, verbose dump |
 | [ICMP.md](ICMP.md) | Internet Control Message Protocol — echo request/reply (detailed), errors, checksum |
+| [CIRCULAR-BITMAP.md](CIRCULAR-BITMAP.md) | Circular bitmap — duplicate reply detection via `recv_table` |
 | [CHECKSUM.md](CHECKSUM.md) | Internet Checksum (RFC 1071) — one's complement algorithm, binary walkthrough, verification |
 | [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) | ICMP identifier — why `getpid() & 0xFFFF`, filtering replies, collisions |
 | [ROUTING.md](ROUTING.md) | Routing table, hops, default gateway, `-r`, path vs TTL |
