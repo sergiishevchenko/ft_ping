@@ -404,9 +404,11 @@ First 10 packets with **no delay**; then normal 1 s interval (or flood interval 
 
 | Flag | Code path |
 |------|-----------|
-| `-n` | **No-op** in `handle_option()` (empty branch) |
+| `-n` | **Intentional no-op** — in `getopt_long` optstring only; `handle_option()` empty branch (`else if (opt == 'n') ;`); no `t_ping` field; no print path checks this flag |
 
-`ft_ping` never performs reverse DNS on replies — reply lines always use `inet_ntoa(from->sin_addr)`. `-n` is accepted for inetutils parity; behavior matches default for this implementation.
+`-n` is parsed so the CLI does not report `invalid option`. Nothing else happens: output with and without `-n` is identical.
+
+`ft_ping` never performs reverse DNS on replies — reply lines always use `inet_ntoa(from->sin_addr)`. The flag is accepted for inetutils parity; behavior already matches `ping -n` for reply lines.
 
 Forward DNS still runs in `resolve_host()` for the hostname operand.
 
@@ -478,7 +480,7 @@ No socket, no root check reached if parse fails first — actually root check is
 | `-f` | `options \| OPT_FLOOD`, `interval` | `ping_loop`, `print_echo_reply` |
 | `-l` | `preload` | `ping_loop` preload loop |
 | `-r` | `g_dontroute` | `set_sock_options(SO_DONTROUTE)` |
-| `-n` | (none) | — |
+| `-n` | (none — intentional no-op) | parsed in `getopt_long` only; empty `handle_option()` branch |
 | `--ip-timestamp` | `options \| OPT_IPTIMESTAMP`, `ip_ts_type` | `set_ip_timestamp`, `print_ip_opt` |
 | host operand | `hostname`, `ip_str`, `dest_addr` | `resolve_host()` |
 | Ctrl+C | `g_stop` | `sig_int_handler`, `ping_loop` |

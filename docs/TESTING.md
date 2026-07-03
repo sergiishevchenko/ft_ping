@@ -64,7 +64,7 @@ RTT values will differ; compare line **format**, not exact milliseconds. See [DI
 | `-f` (flood) | `sudo ./ft_ping -f -c 100 127.0.0.1` | `sudo ping -f -c 100 127.0.0.1` | Dots only; no per-packet lines |
 | `-l` (preload) | `sudo ./ft_ping -l 10 -c 10 127.0.0.1` | `ping -l 10 -c 10 127.0.0.1` | First 10 packets sent fast |
 | `-r` (bypass routing) | `sudo ./ft_ping -r -c 1 127.0.0.1` | `ping -r -c 1 127.0.0.1` | OK on localhost |
-| `-n` (numeric) | `sudo ./ft_ping -n -c 1 google.com` | `ping -n -c 1 google.com` | Resolves host; numeric IP in replies |
+| `-n` (numeric) | `sudo ./ft_ping -n -c 1 google.com` | `ping -n -c 1 google.com` | Flag accepted (no-op); same output as without `-n`; numeric IP in replies |
 | `--ip-timestamp tsonly` | `sudo ./ft_ping --ip-timestamp tsonly -c 1 8.8.8.8` | `ping --ip-timestamp tsonly -c 1 8.8.8.8` | `TS:` block or loss; no crash |
 | `--ip-timestamp tsaddr` | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `TS:` block or loss; no crash |
 | **Negative / robustness** | | | |
@@ -300,8 +300,10 @@ sudo ./ft_ping -n -c 1 google.com
 ```
 
 Expected:
-- Still resolves the target hostname to send packets.
-- Prints numeric addresses in reply lines (no reverse DNS).
+- Flag is **accepted** (no `invalid option`); `handle_option()` does nothing — no `t_ping` field, no output change.
+- Output is **identical** to the same command without `-n`.
+- Still resolves the target hostname to send packets (forward DNS).
+- Reply lines always show numeric IP (`inet_ntoa()`; reverse DNS is never used).
 
 ### `--ip-timestamp <FLAG>`
 

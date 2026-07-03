@@ -66,7 +66,7 @@ So reply lines look like:
 64 bytes from 142.250.185.46: icmp_seq=0 ttl=118 time=1.234 ms
 ```
 
-The **`-n`** flag (numeric) is accepted for inetutils compatibility but does not change behavior — reverse DNS is never performed. Forward DNS still runs if the target is a hostname.
+The **`-n`** flag (numeric) is listed in `getopt_long` so the parser accepts it (no `invalid option` error), but **`handle_option()` does nothing** — empty branch, no field in `t_ping`, no code path checks this flag. Output with and without `-n` is identical. The flag exists for **inetutils command-line compatibility**; reverse DNS is never performed in this project anyway. Forward DNS still runs if the target is a hostname.
 
 ---
 
@@ -193,7 +193,7 @@ DNS failure happens **before** socket creation — no root needed to fail on bad
 |----------|------------------|-----------|
 | Forward DNS for target | Yes | Yes (`getaddrinfo`) |
 | Reverse DNS on replies | Optional (default often on) | **Never** |
-| `-n` | Disables reverse DNS in replies | Accepted; no effect on replies |
+| `-n` | Disables reverse DNS in replies | Parsed only (no-op); no `t_ping` field; output unchanged |
 | Header with hostname | `PING host (ip)` | Same |
 | IPv6 | Supported | **Not supported** |
 

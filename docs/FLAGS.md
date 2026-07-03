@@ -33,7 +33,7 @@ For how options are **parsed** (`getopt_long`, `struct option`, `OPT_TTL`), see 
 | `-f` | bonus | — | off | `-f` |
 | `-l` | bonus | count | 0 | `-l` |
 | `-p` | bonus | hex | auto pattern | `-p` |
-| `-n` | bonus | — | off | `-n` |
+| `-n` | bonus | — | n/a (no-op) | `-n` |
 | `-r` | bonus | — | off | `-r` |
 | `--ip-timestamp` | bonus | `tsonly` / `tsaddr` | off | `--ip-timestamp` |
 
@@ -563,7 +563,7 @@ ping->data_buffer[i] = ping->pattern[i % ping->pattern_len];
 
 ### `-n` (numeric)
 
-In inetutils, `-n` disables DNS lookups in **reply** lines so reply lines show numeric IPs only. In **ft_ping**, reply lines already use `inet_ntoa()` and never call reverse DNS, so `-n` does not change output — the flag is **accepted** for command-line compatibility when comparing with system `ping`. Forward DNS still runs once at startup when the destination is a hostname.
+In inetutils, `-n` disables DNS lookups in **reply** lines so reply lines show numeric IPs only. In **ft_ping**, the flag is in the `getopt_long` optstring so parsing succeeds (no `invalid option`), but **`handle_option()` does nothing** — empty branch, no `t_ping` field. Reply lines already use `inet_ntoa()` and never call reverse DNS, so output is identical with or without `-n`. The flag exists for **command-line compatibility** when comparing with system `ping`. Forward DNS still runs once at startup when the destination is a hostname.
 
 | | |
 |---|---|
@@ -605,7 +605,16 @@ Forward DNS in `resolve_host()` (`getaddrinfo`) runs once to turn `google.com` i
 | `PING google.com (142.250.…)` | hostname + IP from forward lookup | yes, once at start |
 | `64 bytes from 142.250.…: icmp_seq=0` | IP via `inet_ntoa()` | no |
 
-Because of this, `handle_option()` treats `-n` as a no-op (`else if (opt == 'n') ;`) — inetutils accepts the flag, and output already matches numeric reply behavior.
+Because of this, `handle_option()` treats `-n` as an **intentional no-op** (`else if (opt == 'n') ;`):
+
+| What happens | Detail |
+|--------------|--------|
+| Parsing | `-n` is in the `getopt_long` optstring → no `invalid option` error |
+| State | No field in `t_ping`, no `OPT_*` bit — nothing is stored |
+| Runtime | No `print_header` / `print_echo_reply` branch checks `-n` |
+| Output | Identical with or without the flag |
+
+The flag exists so `./ft_ping -n …` is valid on the command line and diff tests against inetutils `ping` can pass; it is not a missing feature — default behavior already matches `ping -n` for reply lines.
 
 ---
 

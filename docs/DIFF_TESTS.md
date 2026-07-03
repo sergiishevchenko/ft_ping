@@ -77,6 +77,8 @@ norm() {
 | 20 | `--ttl 64` | `ping --ttl 64 -c 1 8.8.8.8 2>&1 \| norm > /tmp/ref.txt; ./ft_ping --ttl 64 -c 1 8.8.8.8 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 | 21 | `-n` (numeric) | `ping -n -c 1 google.com 2>&1 \| norm > /tmp/ref.txt; ./ft_ping -n -c 1 google.com 2>&1 \| norm > /tmp/ft.txt; diff /tmp/ref.txt /tmp/ft.txt` |
 
+**Note on `-n`:** in `ft_ping` the flag is an intentional no-op — it is in the `getopt_long` optstring so parsing succeeds, but `handle_option()` has an empty branch and no `t_ping` field is set. The diff test checks that `./ft_ping -n …` runs and matches inetutils output; it does not verify a behavioral toggle (there is none).
+
 ---
 
 ## Negative tests (error messages)

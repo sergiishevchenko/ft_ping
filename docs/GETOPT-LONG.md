@@ -120,7 +120,7 @@ Full mapping in `ft_ping`:
 | `-c` | `c:` | count | `ping->count` |
 | `-f` | `f` | — | flood mode |
 | `-l` | `l:` | preload | `ping->preload` |
-| `-n` | `n` | — | (accepted, no field) |
+| `-n` | `n` | — | intentional no-op: parsed so CLI does not error; `handle_option()` empty branch; no `t_ping` field |
 | `-p` | `p:` | hex pattern | `ping->pattern` |
 | `-r` | `r` | — | `g_dontroute = 1` |
 | `-s` | `s:` | size | `ping->data_length` |

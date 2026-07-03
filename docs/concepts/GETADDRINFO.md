@@ -581,7 +581,7 @@ DNS failure happens **before** raw socket creation — no root required to fail 
 |---------|---------------------|
 | Reply line `bytes from …` | No — IP taken from received packet |
 | Reverse DNS (name from IP) | No — `ft_ping` never calls `getnameinfo()` |
-| `-n` flag | No effect — replies already show numeric IP |
+| `-n` flag | Intentional no-op — parsed in `getopt_long`, empty `handle_option()` branch; replies already show numeric IP via `inet_ntoa()` |
 | ICMP payload / checksum | No |
 | TTL, TOS, `--ttl`, `-T` | No |
 

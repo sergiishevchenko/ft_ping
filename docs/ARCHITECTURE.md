@@ -580,7 +580,7 @@ Quick lookup (implementation):
 | `-c N` | `count = N` | stop after N **unique** replies |
 | `-f` | `OPT_FLOOD`, interval 10 ms | flood, dots on stdout |
 | `-l N` | `preload = N` | N packets at start with no delay |
-| `-n` | (accepted, no extra effect) | replies already numeric IP |
+| `-n` | (accepted, intentional no-op) | in `getopt_long` optstring only; `handle_option()` empty branch; no `t_ping` field; replies already numeric IP |
 | `-p hex` | `pattern_set`, `pattern[]` | payload template |
 | `-r` | `g_dontroute = 1` | `SO_DONTROUTE` |
 | `-s N` | `data_length = N` | data size, max 65507 |

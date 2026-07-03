@@ -48,7 +48,7 @@ Root privileges are required (raw sockets). After socket creation the binary dro
 | `-f` | bonus | Flood ping (dots, 10 ms interval) |
 | `-l <N>` | bonus | Send first N packets with no delay |
 | `-p <hex>` | bonus | Fill payload with hex pattern (max 16 bytes) |
-| `-n` | bonus | Numeric replies (inetutils compatibility) |
+| `-n` | bonus | Accepted for inetutils parity; intentional no-op (parsed, no `t_ping` field, output unchanged) |
 | `-r` | bonus | Bypass routing tables (`SO_DONTROUTE`) |
 | `--ip-timestamp <FLAG>` | bonus | IP timestamp: `tsonly` or `tsaddr` |
 
