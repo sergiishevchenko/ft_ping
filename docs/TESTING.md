@@ -53,7 +53,8 @@ RTT values will differ; compare line **format**, not exact milliseconds. See [DI
 | `-s 56` | `sudo ./ft_ping -s 56 -c 1 127.0.0.1` | `ping -s 56 -c 1 127.0.0.1` | Reply `64 bytes` (8 + 56) |
 | `-s 1000` | `sudo ./ft_ping -s 1000 -c 1 127.0.0.1` | `ping -s 1000 -c 1 127.0.0.1` | Reply `1008 bytes` (8 + 1000) |
 | `-w` (timeout) | `sudo ./ft_ping -w 2 8.8.8.8` | `ping -w 2 8.8.8.8` | Stops after ~2 s; prints statistics |
-| `-W` (linger) | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` | `ping -c 2 -W 3 8.8.8.8` | Waits up to `-W` s for late replies |
+| `-W` (linger) | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` | `ping -c 2 -W 3 8.8.8.8` | Exits when enough replies arrive (often before `-W` elapses) |
+| `-W` (linger, visible) | `time sudo ./ft_ping -c 2 -W 3 192.0.2.1` | `time ping -c 2 -W 3 192.0.2.1` | ~4 s total (no replies); see **`-W` tests** below |
 | `--ttl 1` | `sudo ./ft_ping --ttl 1 -c 1 8.8.8.8` | `ping --ttl 1 -c 1 8.8.8.8` | `Time to live exceeded` |
 | `--ttl 64` | `sudo ./ft_ping --ttl 64 -c 1 8.8.8.8` | `ping --ttl 64 -c 1 8.8.8.8` | Normal echo reply |
 | `-T 0` | `sudo ./ft_ping -T 0 -c 1 127.0.0.1` | `ping -T 0 -c 1 127.0.0.1` | No error (TOS may be ignored) |
@@ -220,14 +221,77 @@ sudo ./ft_ping -w 2 8.8.8.8
 Expected:
 - Stops after ~2 seconds and prints statistics.
 
-### `-W <N>` (linger / “wait for replies” after sending done)
+### `-W <N>` (linger / wait for replies after send quota)
+
+`-W` only works **with `-c`**. It does **not** mean “wait N seconds after all replies arrived”. The loop exits as soon as enough **unique** replies are received; `-W` is only the **maximum** extra listen time after all `-c` packets have been **sent**.
+
+Two exit paths in `ping_loop()` (whichever happens first):
+
+1. **Enough replies** — `(num_recv - num_rept) >= count` → exit immediately.
+2. **Linger expired** — all packets sent, `finishing` mode, no more sends, wait up to `-W` seconds → exit.
+
+#### Why `-W 100` on `8.8.8.8` looks like it does nothing
+
+Replies arrive in milliseconds. Path (1) fires before linger matters — total runtime is ~1–2 s, not 100 s. That is **correct**.
 
 ```bash
-sudo ./ft_ping -c 2 -W 3 8.8.8.8
+sudo ./ft_ping -c 2 -W 100 8.8.8.8
 ```
 
 Expected:
-- After the last send, program may stay a bit to receive late replies (up to `-W` seconds) before printing final statistics.
+- Two reply lines within ~1–2 s.
+- Statistics: `2 packets transmitted, 2 packets received`.
+- Program exits quickly — **not** after 100 s.
+
+#### Demonstrating `-W` visibly (no replies)
+
+Use **TEST-NET-1** (`192.0.2.1`, RFC 5737): packets can be sent but no host replies. Then only path (2) applies.
+
+```bash
+time sudo ./ft_ping -c 2 -W 3 192.0.2.1
+time sudo ./ft_ping -c 2 -W 100 192.0.2.1
+```
+
+Expected wall time (approximate):
+
+| Command | Total time | Breakdown |
+|---------|------------|-----------|
+| `-c 2 -W 3` | **~4 s** | ~0 s 1st send + ~1 s 2nd send + **3 s** linger |
+| `-c 2 -W 100` | **~101 s** | ~0 s 1st send + ~1 s 2nd send + **100 s** linger |
+
+Statistics for both:
+- `2 packets transmitted, 0 packets received, 100% packet loss`
+- Exit code non-zero (`1`)
+
+Compare with inetutils on the Debian VM:
+
+```bash
+time ping -c 2 -W 3 192.0.2.1
+time ping -c 2 -W 100 192.0.2.1
+```
+
+`ft_ping` and `ping` should finish within a few seconds of each other (same linger semantics).
+
+#### `-W` without `-c` (no effect)
+
+```bash
+sudo ./ft_ping -W 100 127.0.0.1
+```
+
+Expected:
+- Pings until Ctrl+C — `-W` is ignored (`count == 0`, send branch never enters `finishing`).
+- Same behavior as `sudo ./ft_ping 127.0.0.1`.
+
+#### Quick regression on a live host (parity with inetutils)
+
+```bash
+sudo ./ft_ping -c 2 -W 3 8.8.8.8
+ping -c 2 -W 3 8.8.8.8
+```
+
+Expected:
+- Both exit after 2 replies (fast).
+- Confirms flag is accepted and does not break the happy path.
 
 ### `--ttl <N>`
 
