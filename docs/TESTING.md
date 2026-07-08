@@ -71,7 +71,7 @@ RTT values will differ; compare line **format**, not exact milliseconds. See [DI
 | **Negative / robustness** | | | |
 | No args | `./ft_ping` | `ping` | Error + usage; non-zero exit |
 | Invalid option | `./ft_ping -Z 127.0.0.1` | `ping -Z 127.0.0.1` | `invalid option`; non-zero exit |
-| Unknown host | `./ft_ping no.such.host` | `ping no.such.host` | `unknown host`; non-zero exit |
+| Unknown host | `./ft_ping does-not-exist.invalid` | `ping does-not-exist.invalid` | `unknown host`; non-zero exit |
 | No permissions | `./ft_ping 127.0.0.1` | — | `Operation not permitted`; non-zero exit |
 | Multiple hosts | `./ft_ping 127.0.0.1 127.0.0.2` | — | `only one host allowed`; non-zero exit |
 | Bad `--ip-timestamp` | `./ft_ping --ip-timestamp foobar 127.0.0.1` | — | `unsupported timestamp type`; non-zero exit |
