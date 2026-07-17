@@ -208,6 +208,7 @@ typedef struct s_ping {
     bool                pattern_set;
 
     unsigned int        ip_ts_type;       // SOPT_TSONLY / SOPT_TSADDR
+    bool                dontroute;        // -r: SO_DONTROUTE on socket
     unsigned char      *data_buffer;      // payload template
 
     struct timeval      start_time;       // for -w
@@ -238,7 +239,6 @@ Only `-v`, `-f`, and `--ip-timestamp` set `ping->options` (via `|=` in `handle_o
 | Name | Type | Role |
 |------|------|------|
 | `g_stop` | `volatile sig_atomic_t` | set to 1 on Ctrl+C |
-| `g_dontroute` | `int` | 1 when `-r` is passed (outside `t_ping`, read in `socket.c`) |
 | `g_long_opts` | `static struct option[]` | long-option table for `getopt_long` (`main.c` only) |
 
 `volatile sig_atomic_t` for `g_stop` allows safe writes from the signal handler without races with the main loop.
@@ -582,7 +582,7 @@ Quick lookup (implementation):
 | `-l N` | `preload = N` | N packets at start with no delay |
 | `-n` | (accepted, intentional no-op) | in `getopt_long` optstring only; `handle_option()` empty branch; no `t_ping` field; replies already numeric IP |
 | `-p hex` | `pattern_set`, `pattern[]` | payload template |
-| `-r` | `g_dontroute = 1` | `SO_DONTROUTE` |
+| `-r` | `dontroute = true` | `SO_DONTROUTE` |
 | `-s N` | `data_length = N` | data size, max 65507 |
 | `-T N` | `tos = N` | IP TOS 0–255 |
 | `-w N` | `timeout = N` | stop after N seconds |

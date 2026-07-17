@@ -167,7 +167,7 @@ It is indicative, not exact — different paths, load balancers, and TTL rewriti
 
 ## `-r` and `SO_DONTROUTE` (bypass routing table)
 
-Flag **`-r`** sets `g_dontroute` in `main.c`; `set_sock_options()` in `socket.c` applies:
+Flag **`-r`** sets `ping->dontroute` in `handle_option()` (`main.c`); `set_sock_options()` in `socket.c` applies:
 
 ```c
 setsockopt(ping->sockfd, SOL_SOCKET, SO_DONTROUTE, &one, sizeof(one));

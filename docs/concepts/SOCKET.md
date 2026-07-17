@@ -101,7 +101,7 @@ Sets the **Type of Service** byte when `ping->tos >= 0`. If `-T` was not used, `
 
 ### `SO_DONTROUTE` (if `-r`)
 
-When global `g_dontroute` is set in `main.c` for flag `-r`, the kernel must **not** use the routing table — only directly connected destinations. Works for `127.0.0.1`; remote hosts often fail.
+When `ping->dontroute` is set by flag `-r` in `handle_option()`, the kernel must **not** use the routing table — only directly connected destinations. Works for `127.0.0.1`; remote hosts often fail.
 
 ### `SO_RCVTIMEO` (always, 1 second)
 
@@ -111,7 +111,7 @@ Limits how long `recvmsg()` may block waiting for data. The main loop also uses 
 |--------|----------|-----------|
 | `IP_TTL` | `--ttl` | `ping->ttl` |
 | `IP_TOS` | `-T` | `ping->tos` |
-| `SO_DONTROUTE` | `-r` | `g_dontroute` (global in `main.c`) |
+| `SO_DONTROUTE` | `-r` | `ping->dontroute` |
 
 ---
 
@@ -205,7 +205,7 @@ Echo **Reply** (type 0) is accepted only if ICMP **id** matches `ping->ident` (`
 | `set_sock_options` | `static` helper: broadcast, TTL, TOS, `-r`, receive timeout |
 | `set_ip_timestamp` | Optional `IP_OPTIONS` for `--ip-timestamp` |
 
-`g_dontroute` is declared `extern` in `socket.c` and defined in `main.c` when `-r` is parsed — a simple way to pass one flag without extending `t_ping`.
+`-r` is stored in `ping->dontroute` during `parse_args()` and read in `set_sock_options()` when the socket is created.
 
 ---
 

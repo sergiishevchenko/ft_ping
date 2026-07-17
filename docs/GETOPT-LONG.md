@@ -122,7 +122,7 @@ Full mapping in `ft_ping`:
 | `-l` | `l:` | preload | `ping->preload` |
 | `-n` | `n` | — | intentional no-op: parsed so CLI does not error; `handle_option()` empty branch; no `t_ping` field |
 | `-p` | `p:` | hex pattern | `ping->pattern` |
-| `-r` | `r` | — | `g_dontroute = 1` |
+| `-r` | `r` | — | `ping->dontroute = true` |
 | `-s` | `s:` | size | `ping->data_length` |
 | `-T` | `T:` | TOS | `ping->tos` |
 | `-v` | `v` | — | `OPT_VERBOSE` |
@@ -244,10 +244,7 @@ void parse_args(t_ping *ping, int argc, char **argv)
                               g_long_opts, NULL)) != -1)
     {
         if (opt == '?') { /* help or invalid option */ ... }
-        if (opt == 'r')
-            g_dontroute = 1;
-        else
-            handle_option(ping, opt);
+        handle_option(ping, opt);
     }
 
     while (optind < argc) { /* exactly one host */ ... }
@@ -260,8 +257,7 @@ Each iteration:
 
 1. `getopt_long` consumes the next flag (and its argument if any).
 2. `opt == '?'` — help or error (see below).
-3. `opt == 'r'` — special case: sets global `g_dontroute` (used in `socket.c`), not only `t_ping`.
-4. Otherwise `handle_option(ping, opt)` updates `t_ping`.
+3. Otherwise `handle_option(ping, opt)` updates `t_ping` (including `-r` → `ping->dontroute`).
 
 ### Step 2 — positional hostname
 
@@ -375,7 +371,6 @@ Returns `'?'` before any socket or `getuid()` check → usage printed → exit 0
 | `OPT_TTL = 256` | Safe distinct codes for long-only options |
 | `--help` → `'?'` | Reuse same branch as `-?` |
 | `opterr = 0` | Custom error strings with `ft_ping:` prefix |
-| `-r` outside `handle_option` | Sets file-level `g_dontroute` for `socket.c` |
 | Host after options | Standard POSIX pattern; `optind` marks start |
 | `parse_args` before root check | Help and arg errors without requiring privileges |
 

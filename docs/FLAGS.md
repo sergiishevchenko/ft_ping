@@ -145,7 +145,7 @@ These CLI options write to **separate** `t_ping` fields instead:
 | `-p` | `pattern[]`, `pattern_set` |
 | `--ttl` | `ttl` |
 | `--ip-timestamp tsonly` / `tsaddr` | `ip_ts_type` (in addition to `OPT_IPTIMESTAMP`) |
-| `-r` | `g_dontroute` (global, not in `t_ping`) |
+| `-r` | `dontroute` |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full `t_ping` layout.
 
@@ -627,7 +627,7 @@ Sets `SO_DONTROUTE` on the socket so packets are sent **without consulting the n
 | **Purpose** | Send packets **without** normal routing (`SO_DONTROUTE`) |
 | **Syntax** | `-r` |
 | **Behavior** | Works for `127.0.0.1`; remote hosts may fail with a clean error (no crash) |
-| **Implementation** | `g_dontroute` → `setsockopt(SO_DONTROUTE)` in `socket.c` |
+| **Implementation** | `ping->dontroute` → `setsockopt(SO_DONTROUTE)` in `socket.c` |
 | **Example** | `sudo ./ft_ping -r -c 1 127.0.0.1` |
 
 ---

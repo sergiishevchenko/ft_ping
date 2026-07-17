@@ -394,7 +394,7 @@ First 10 packets with **no delay**; then normal 1 s interval (or flood interval 
 
 | Flag | Code path |
 |------|-----------|
-| `-r` | `g_dontroute = 1` in `parse_args` |
+| `-r` | `ping->dontroute = true` in `handle_option` |
 
 `set_sock_options()` → `setsockopt(SO_DONTROUTE)`. Packets must reach target without routing table (works for `127.0.0.1`; remote hosts may fail at send or receive).
 
@@ -479,7 +479,7 @@ No socket, no root check reached if parse fails first — actually root check is
 | `-p` | `pattern[]`, `pattern_set` | `decode_pattern`, `init_data_buffer` |
 | `-f` | `options \| OPT_FLOOD`, `interval` | `ping_loop`, `print_echo_reply` |
 | `-l` | `preload` | `ping_loop` preload loop |
-| `-r` | `g_dontroute` | `set_sock_options(SO_DONTROUTE)` |
+| `-r` | `dontroute` | `set_sock_options(SO_DONTROUTE)` |
 | `-n` | (none — intentional no-op) | parsed in `getopt_long` only; empty `handle_option()` branch |
 | `--ip-timestamp` | `options \| OPT_IPTIMESTAMP`, `ip_ts_type` | `set_ip_timestamp`, `print_ip_opt` |
 | host operand | `hostname`, `ip_str`, `dest_addr` | `resolve_host()` |
