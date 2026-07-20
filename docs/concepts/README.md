@@ -13,7 +13,8 @@ This folder explains the network concepts that matter most for understanding how
 | [CHECKSUM.md](CHECKSUM.md) | Internet Checksum (RFC 1071) — one's complement algorithm, binary walkthrough, verification |
 | [ENDIANNESS.md](ENDIANNESS.md) | Little-endian vs big-endian — host vs network byte order, `htons` / `ntohs` |
 | [ICMP-IDENTIFIER.md](ICMP-IDENTIFIER.md) | ICMP identifier — why `getpid() & 0xFFFF`, filtering replies, collisions |
-| [ROUTING.md](ROUTING.md) | Routing table, hops, default gateway, `-r`, path vs TTL |
+| [ROUTING.md](ROUTING.md) | Hops, TTL vs routing, `-r`, ICMP from routers, path vs TTL |
+| [ROUTING-TABLE-INTERFACES-GATEWAY.md](ROUTING-TABLE-INTERFACES-GATEWAY.md) | **In depth:** routing table, interfaces, gateways, ARP, Linux tools |
 | [TTL.md](TTL.md) | Time To Live — hop limit, decrements, “Time to live exceeded” |
 | [TOS.md](TOS.md) | Type of Service — QoS byte in the IP header, `-T` flag |
 | [SIGNALS.md](SIGNALS.md) | SIGINT / Ctrl+C — `setup_signals`, `g_stop`, graceful shutdown |

@@ -4,7 +4,7 @@ When `ft_ping` calls `sendto()`, the kernel must decide **which network interfac
 
 This page explains **hops**, **how routing works**, **common Linux tools**, and how **`ft_ping`** interacts with routing (`--ttl`, `-r`, ICMP errors from routers).
 
-Related: [TTL.md](TTL.md), [IPv4.md](IPv4.md), [ICMP.md](ICMP.md), [SOCKET.md](SOCKET.md), [KERNEL-NETWORKING.md](KERNEL-NETWORKING.md).
+Related: [ROUTING-TABLE-INTERFACES-GATEWAY.md](ROUTING-TABLE-INTERFACES-GATEWAY.md) (interfaces, FIB fields, gateways, ARP — **detailed**), [TTL.md](TTL.md), [IPv4.md](IPv4.md), [ICMP.md](ICMP.md), [SOCKET.md](SOCKET.md), [KERNEL-NETWORKING.md](KERNEL-NETWORKING.md).
 
 ---
 
@@ -39,6 +39,8 @@ Each hop **decrements TTL** by 1 (see [TTL.md](TTL.md)). If TTL reaches 0 at a r
 The **routing table** answers: *“For destination IP X, which interface and which next hop should be used?”*
 
 On Linux the kernel holds this table. User-space tools (`ip route`, NetworkManager, etc.) add or change entries.
+
+For a full treatment of **interfaces**, **route entry fields** (`via`, `dev`, `scope`, `metric`), **gateways**, **ARP**, and **`ip route get`**, see [ROUTING-TABLE-INTERFACES-GATEWAY.md](ROUTING-TABLE-INTERFACES-GATEWAY.md).
 
 ### Example table (typical home / VM setup)
 
