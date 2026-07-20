@@ -215,7 +215,10 @@ static void	ping_loop(t_ping *ping)
 			{
 				send_ping(ping);
 				if (ping->options & OPT_FLOOD)
+				{
 					putchar('.');
+					fflush(stdout);
+				}
 				gettimeofday(&last_send, NULL);
 			}
 			else if (finishing)

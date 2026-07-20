@@ -64,6 +64,7 @@ void	print_echo_reply(t_ping *ping, struct msghdr *msg,
 	if (ping->options & OPT_FLOOD)
 	{
 		putchar('\b');
+		fflush(stdout);
 		return ;
 	}
 	printf("%d bytes from %s: icmp_seq=%u",
