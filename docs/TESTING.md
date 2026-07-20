@@ -66,8 +66,8 @@ RTT values will differ; compare line **format**, not exact milliseconds. See [DI
 | `-l` (preload) | `sudo ./ft_ping -l 10 -c 10 127.0.0.1` | `ping -l 10 -c 10 127.0.0.1` | First 10 packets sent fast |
 | `-r` (bypass routing) | `sudo ./ft_ping -r -c 1 127.0.0.1` | `ping -r -c 1 127.0.0.1` | OK on localhost |
 | `-n` (numeric) | `sudo ./ft_ping -n -c 1 google.com` | `ping -n -c 1 google.com` | Flag accepted (no-op); same output as without `-n`; numeric IP in replies |
-| `--ip-timestamp tsonly` | `sudo ./ft_ping --ip-timestamp tsonly -c 1 8.8.8.8` | `ping --ip-timestamp tsonly -c 1 8.8.8.8` | `TS:` block or loss; no crash |
-| `--ip-timestamp tsaddr` | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `ping --ip-timestamp tsaddr -c 1 8.8.8.8` | `TS:` block or loss; no crash |
+| `--ip-timestamp tsonly` | `sudo ./ft_ping --ip-timestamp tsonly -c 1 127.0.0.1` | `ping --ip-timestamp tsonly -c 1 127.0.0.1` | `TS:` block or loss; no crash |
+| `--ip-timestamp tsaddr` | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 127.0.0.1` | `ping --ip-timestamp tsaddr -c 1 127.0.0.1` | `TS:` block or loss; no crash |
 | **Negative / robustness** | | | |
 | No args | `./ft_ping` | `ping` | Error + usage; non-zero exit |
 | Invalid option | `./ft_ping -Z 127.0.0.1` | `ping -Z 127.0.0.1` | `invalid option`; non-zero exit |
@@ -372,8 +372,8 @@ Expected:
 ### `--ip-timestamp <FLAG>`
 
 ```bash
-sudo ./ft_ping --ip-timestamp tsonly -c 1 8.8.8.8
-sudo ./ft_ping --ip-timestamp tsaddr -c 1 8.8.8.8
+sudo ./ft_ping --ip-timestamp tsonly -c 1 127.0.0.1
+sudo ./ft_ping --ip-timestamp tsaddr -c 1 127.0.0.1
 ```
 
 Expected:
