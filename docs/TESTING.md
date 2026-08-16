@@ -35,48 +35,48 @@ Flag details (mandatory vs bonus, behavior, defaults): **`FLAGS.md`**.
 
 RTT values will differ; compare line **format**, not exact milliseconds. See [DIFF_TESTS.md](DIFF_TESTS.md) § *Expected differences* for what the evaluator ignores.
 
-| Test | `ft_ping` | `ping` | Expected |
-|------|-----------|--------|----------|
-| **Mandatory** | | | |
-| 1) Help (`-?`) | `./ft_ping -?` | `ping -?` | Exits OK; prints usage |
-| 1) Help (`--help`) | `./ft_ping --help` | `ping --help` | Exits OK; prints usage |
-| 2) Basic IPv4 (Ctrl+C) | `sudo ./ft_ping 127.0.0.1` | `ping 127.0.0.1` | `PING 127.0.0.1 (127.0.0.1): 56 data bytes`; `64 bytes from ... icmp_seq=0 ...`; Ctrl+C → statistics |
-| 3) Hostname / FQDN | `sudo ./ft_ping google.com` | `ping google.com` | `PING google.com (x.x.x.x): 56 data bytes`; replies show IP only |
-| 4) Verbose (`-v`) | `sudo ./ft_ping -v -c 2 127.0.0.1` | `ping -v -c 2 127.0.0.1` | Header includes `id 0x.... = ....` |
-| 5) TTL exceeded | `sudo ./ft_ping --ttl 1 -c 3 8.8.8.8` | `ping --ttl 1 -c 3 8.8.8.8` | `Time to live exceeded` from router; 100% loss |
-| 5) TTL exceeded (`-v`) | `sudo ./ft_ping -v --ttl 1 -c 3 8.8.8.8` | `ping -v --ttl 1 -c 3 8.8.8.8` | Same error + `IP Hdr Dump:` block |
-| **Output format** | | | |
-| Statistics block | `sudo ./ft_ping -c 3 127.0.0.1` | `ping -c 3 127.0.0.1` | `--- ... ping statistics ---`; packet counts; `round-trip min/avg/max/stddev` |
-| **Bonus** | | | |
-| `-c` (count) | `sudo ./ft_ping -c 1 127.0.0.1` | `ping -c 1 127.0.0.1` | Exits after 1 reply |
-| `-s 0` | `sudo ./ft_ping -s 0 -c 1 127.0.0.1` | `ping -s 0 -c 1 127.0.0.1` | `0 data bytes`; reply `8 bytes` (no `time=`) |
-| `-s 56` | `sudo ./ft_ping -s 56 -c 1 127.0.0.1` | `ping -s 56 -c 1 127.0.0.1` | Reply `64 bytes` (8 + 56) |
-| `-s 1000` | `sudo ./ft_ping -s 1000 -c 1 127.0.0.1` | `ping -s 1000 -c 1 127.0.0.1` | Reply `1008 bytes` (8 + 1000) |
-| `-w` (timeout) | `sudo ./ft_ping -w 2 8.8.8.8` | `ping -w 2 8.8.8.8` | Stops after ~2 s; prints statistics |
-| `-W` (linger) | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` | `ping -c 2 -W 3 8.8.8.8` | Exits when enough replies arrive (often before `-W` elapses) |
-| `-W` (linger, visible) | `time sudo ./ft_ping -c 2 -W 3 192.0.2.1` | `time ping -c 2 -W 3 192.0.2.1` | ~4 s total (no replies); see **`-W` tests** below |
-| `--ttl 1` | `sudo ./ft_ping --ttl 1 -c 1 8.8.8.8` | `ping --ttl 1 -c 1 8.8.8.8` | `Time to live exceeded` |
-| `--ttl 64` | `sudo ./ft_ping --ttl 64 -c 1 8.8.8.8` | `ping --ttl 64 -c 1 8.8.8.8` | Normal echo reply |
-| `-T 0` | `sudo ./ft_ping -T 0 -c 1 127.0.0.1` | `ping -T 0 -c 1 127.0.0.1` | No error (TOS may be ignored) |
-| `-T 16` | `sudo ./ft_ping -T 16 -c 1 127.0.0.1` | `ping -T 16 -c 1 127.0.0.1` | No error (TOS may be ignored) |
-| `-p ff` | `sudo ./ft_ping -p ff -s 56 -c 1 127.0.0.1` | `ping -p ff -s 56 -c 1 127.0.0.1` | No crash |
-| `-p` (long hex) | `sudo ./ft_ping -p 00112233445566778899aabbccddeeff -s 56 -c 1 127.0.0.1` | `ping -p 00112233445566778899aabbccddeeff -s 56 -c 1 127.0.0.1` | No crash |
-| `-p zz` (invalid) | `sudo ./ft_ping -p zz 127.0.0.1` | `ping -p zz 127.0.0.1` | Error; exits non-zero |
-| `-f` (flood) | `sudo ./ft_ping -f -c 100 127.0.0.1` | `sudo ping -f -c 100 127.0.0.1` | Dots only; no per-packet lines |
-| `-l` (preload) | `sudo ./ft_ping -l 10 -c 10 127.0.0.1` | `ping -l 10 -c 10 127.0.0.1` | First 10 packets sent fast |
-| `-r` (bypass routing) | `sudo ./ft_ping -r -c 1 127.0.0.1` | `ping -r -c 1 127.0.0.1` | OK on localhost |
-| `-n` (numeric) | `sudo ./ft_ping -n -c 1 google.com` | `ping -n -c 1 google.com` | Flag accepted (no-op); same output as without `-n`; numeric IP in replies |
-| `--ip-timestamp tsonly` | `sudo ./ft_ping --ip-timestamp tsonly -c 1 127.0.0.1` | `ping --ip-timestamp tsonly -c 1 127.0.0.1` | `TS:` block or loss; no crash |
-| `--ip-timestamp tsaddr` | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 127.0.0.1` | `ping --ip-timestamp tsaddr -c 1 127.0.0.1` | `TS:` block or loss; no crash |
-| **Negative / robustness** | | | |
-| No args | `./ft_ping` | `ping` | Error + usage; non-zero exit |
-| Invalid option | `./ft_ping -Z 127.0.0.1` | `ping -Z 127.0.0.1` | `invalid option`; non-zero exit |
-| Unknown host | `./ft_ping does-not-exist.invalid` | `ping does-not-exist.invalid` | `unknown host`; non-zero exit |
-| No permissions | `./ft_ping 127.0.0.1` | — | `Operation not permitted`; non-zero exit |
-| Multiple hosts | `./ft_ping 127.0.0.1 127.0.0.2` | — | `only one host allowed`; non-zero exit |
-| Bad `--ip-timestamp` | `./ft_ping --ip-timestamp foobar 127.0.0.1` | — | `unsupported timestamp type`; non-zero exit |
-| `-r` remote | `sudo ./ft_ping -r -c 1 8.8.8.8` | `ping -r -c 1 8.8.8.8` | May fail; no crash |
-| Unreachable host | `sudo ./ft_ping -c 1 -w 2 192.0.2.1` | `ping -c 1 -w 2 192.0.2.1` | Non-zero exit (no replies) |
+| Test | What it does | `ft_ping` | `ping` | Expected |
+|------|--------------|-----------|--------|----------|
+| **Mandatory** | | | | |
+| 1) Help (`-?`) | Print usage and exit (no root needed) | `./ft_ping -?` | `ping -?` | Exits OK; prints usage |
+| 1) Help (`--help`) | Same as `-?` (long form) | `./ft_ping --help` | `ping --help` | Exits OK; prints usage |
+| 2) Basic IPv4 (Ctrl+C) | Continuous ping until interrupted | `sudo ./ft_ping 127.0.0.1` | `ping 127.0.0.1` | `PING 127.0.0.1 (127.0.0.1): 56 data bytes`; `64 bytes from ... icmp_seq=0 ...`; Ctrl+C → statistics |
+| 3) Hostname / FQDN | Resolve hostname to IPv4, then ping | `sudo ./ft_ping google.com` | `ping google.com` | `PING google.com (x.x.x.x): 56 data bytes`; replies show IP only |
+| 4) Verbose (`-v`) | Extra detail: id in header, ICMP errors, `IP Hdr Dump:` | `sudo ./ft_ping -v -c 2 127.0.0.1` | `ping -v -c 2 127.0.0.1` | Header includes `id 0x.... = ....` |
+| 5) TTL exceeded | Cap hop count so the packet dies on the first router | `sudo ./ft_ping --ttl 1 -c 3 8.8.8.8` | `ping --ttl 1 -c 3 8.8.8.8` | `Time to live exceeded` from router; 100% loss |
+| 5) TTL exceeded (`-v`) | Same TTL test with verbose ICMP/IP dump | `sudo ./ft_ping -v --ttl 1 -c 3 8.8.8.8` | `ping -v --ttl 1 -c 3 8.8.8.8` | Same error + `IP Hdr Dump:` block |
+| **Output format** | | | | |
+| Statistics block | Stop after N replies; print loss and RTT summary | `sudo ./ft_ping -c 3 127.0.0.1` | `ping -c 3 127.0.0.1` | `--- ... ping statistics ---`; packet counts; `round-trip min/avg/max/stddev` |
+| **Bonus** | | | | |
+| `-c` (count) | Exit after N unique replies | `sudo ./ft_ping -c 1 127.0.0.1` | `ping -c 1 127.0.0.1` | Exits after 1 reply |
+| `-s 0` | ICMP payload size = 0 (no room for RTT timestamp) | `sudo ./ft_ping -s 0 -c 1 127.0.0.1` | `ping -s 0 -c 1 127.0.0.1` | `0 data bytes`; reply `8 bytes` (no `time=`) |
+| `-s 56` | Default payload size (56 data bytes → 64-byte reply) | `sudo ./ft_ping -s 56 -c 1 127.0.0.1` | `ping -s 56 -c 1 127.0.0.1` | Reply `64 bytes` (8 + 56) |
+| `-s 1000` | Large ICMP payload | `sudo ./ft_ping -s 1000 -c 1 127.0.0.1` | `ping -s 1000 -c 1 127.0.0.1` | Reply `1008 bytes` (8 + 1000) |
+| `-w` (timeout) | Wall-clock deadline: stop after N seconds | `sudo ./ft_ping -w 2 8.8.8.8` | `ping -w 2 8.8.8.8` | Stops after ~2 s; prints statistics |
+| `-W` (linger) | After last send with `-c`, wait up to N s for late replies | `sudo ./ft_ping -c 2 -W 3 8.8.8.8` | `ping -c 2 -W 3 8.8.8.8` | Exits when enough replies arrive (often before `-W` elapses) |
+| `-W` (linger, visible) | Same linger, but no replies → wait full window | `time sudo ./ft_ping -c 2 -W 3 192.0.2.1` | `time ping -c 2 -W 3 192.0.2.1` | ~4 s total (no replies); see **`-W` tests** below |
+| `--ttl 1` | Set IP TTL to 1 (packet dies after one hop) | `sudo ./ft_ping --ttl 1 -c 1 8.8.8.8` | `ping --ttl 1 -c 1 8.8.8.8` | `Time to live exceeded` |
+| `--ttl 64` | Set IP TTL to default-like value (normal reachability) | `sudo ./ft_ping --ttl 64 -c 1 8.8.8.8` | `ping --ttl 64 -c 1 8.8.8.8` | Normal echo reply |
+| `-T 0` | Set IP Type of Service (TOS) to 0 | `sudo ./ft_ping -T 0 -c 1 127.0.0.1` | `ping -T 0 -c 1 127.0.0.1` | No error (TOS may be ignored) |
+| `-T 16` | Set IP TOS to 16 (low delay / class selector) | `sudo ./ft_ping -T 16 -c 1 127.0.0.1` | `ping -T 16 -c 1 127.0.0.1` | No error (TOS may be ignored) |
+| `-p ff` | Fill payload with repeating hex pattern `ff` | `sudo ./ft_ping -p ff -s 56 -c 1 127.0.0.1` | `ping -p ff -s 56 -c 1 127.0.0.1` | No crash |
+| `-p` (long hex) | Fill payload with a long hex pattern (up to 16 bytes) | `sudo ./ft_ping -p 00112233445566778899aabbccddeeff -s 56 -c 1 127.0.0.1` | `ping -p 00112233445566778899aabbccddeeff -s 56 -c 1 127.0.0.1` | No crash |
+| `-p zz` (invalid) | Reject bad hex in `-p` | `sudo ./ft_ping -p zz 127.0.0.1` | `ping -p zz 127.0.0.1` | Error; exits non-zero |
+| `-f` (flood) | Flood mode: fast interval, dots instead of reply lines | `sudo ./ft_ping -f -c 100 127.0.0.1` | `sudo ping -f -c 100 127.0.0.1` | Dots only; no per-packet lines |
+| `-l` (preload) | Send first N probes with no inter-packet delay | `sudo ./ft_ping -l 10 -c 10 127.0.0.1` | `ping -l 10 -c 10 127.0.0.1` | First 10 packets sent fast |
+| `-r` (bypass routing) | Bypass routing table (`SO_DONTROUTE`); OK on localhost | `sudo ./ft_ping -r -c 1 127.0.0.1` | `ping -r -c 1 127.0.0.1` | OK on localhost |
+| `-n` (numeric) | Inetutils parity flag; intentional no-op (output unchanged) | `sudo ./ft_ping -n -c 1 google.com` | `ping -n -c 1 google.com` | Flag accepted (no-op); same output as without `-n`; numeric IP in replies |
+| `--ip-timestamp tsonly` | Attach IP Timestamp option (time only); routers may fill `TS:` | `sudo ./ft_ping --ip-timestamp tsonly -c 1 127.0.0.1` | `ping --ip-timestamp tsonly -c 1 127.0.0.1` | `TS:` block or loss; no crash |
+| `--ip-timestamp tsaddr` | Same, but each hop may record address + time | `sudo ./ft_ping --ip-timestamp tsaddr -c 1 127.0.0.1` | `ping --ip-timestamp tsaddr -c 1 127.0.0.1` | `TS:` block or loss; no crash |
+| **Negative / robustness** | | | | |
+| No args | Missing destination must fail | `./ft_ping` | `ping` | Error + usage; non-zero exit |
+| Invalid option | Unknown flag must fail | `./ft_ping -Z 127.0.0.1` | `ping -Z 127.0.0.1` | `invalid option`; non-zero exit |
+| Unknown host | DNS failure must fail cleanly | `./ft_ping does-not-exist.invalid` | `ping does-not-exist.invalid` | `unknown host`; non-zero exit |
+| No permissions | Raw socket without root must fail | `./ft_ping 127.0.0.1` | — | `Operation not permitted`; non-zero exit |
+| Multiple hosts | Only one destination allowed | `./ft_ping 127.0.0.1 127.0.0.2` | — | `only one host allowed`; non-zero exit |
+| Bad `--ip-timestamp` | Reject unsupported timestamp type | `./ft_ping --ip-timestamp foobar 127.0.0.1` | — | `unsupported timestamp type`; non-zero exit |
+| `-r` remote | `SO_DONTROUTE` to remote usually fails; must not crash | `sudo ./ft_ping -r -c 1 8.8.8.8` | `ping -r -c 1 8.8.8.8` | May fail; no crash |
+| Unreachable host | No replies → non-zero exit | `sudo ./ft_ping -c 1 -w 2 192.0.2.1` | `ping -c 1 -w 2 192.0.2.1` | Non-zero exit (no replies) |
 
 On Linux (Debian VM), prefix `ping` with `sudo` when raw sockets require root. macOS: `-W` is in milliseconds (`-W 3000` for linger); `-w`, `-n`, `-T`, and `--ip-timestamp` are not available on BSD `ping`.
 
